@@ -17,7 +17,7 @@ from random import seed, random, randint
 from statistics import mean
 from typing import Union
 
-from utils import create_random_circuit, create_random_states, update_state, decomplexify_vector
+from utils.circuit import create_random_circuit, create_random_states, update_state, decomplexify_vector
 
 import torch
 import torch.nn as nn
