@@ -13,11 +13,11 @@ from quasim.gates import (
     Gate,
     CGate
 )
-from random import seed, random, randint
-from statistics import mean
+from random import seed
 from typing import Union
 
 from utils.circuit import create_random_circuit, create_random_states, update_state, decomplexify_vector
+from utils.rl import sample_epsilon_greedy, sample, sample_best
 
 import torch
 import torch.nn as nn
@@ -110,23 +110,6 @@ def get_gate(gate_type_idx, control_qubit_idx, target_qubit_idx) -> Union[IGate,
         return CX(control_qubit_idx, target_qubit_idx)
     else:
         raise NotImplementedError()
-
-
-def sample_epsilon_greedy(dist: Categorical, epsilon: float = 0.01) -> torch.Tensor:
-    if random() < (1 - epsilon):
-        return sample_best(dist)
-    else:
-        action_idx = randint(0, len(dist.probs) - 1)
-        # Workaround to ensure that return formats match
-        return torch.LongTensor([action_idx])[0]
-
-
-def sample(dist: Categorical) -> torch.Tensor:
-    return dist.sample()
-
-
-def sample_best(dist: Categorical) -> torch.Tensor:
-    return dist.probs.argmax()
 
 
 if __name__ == "__main__":
@@ -267,8 +250,6 @@ if __name__ == "__main__":
     plt.plot(episodes, episode_rewards)
     plt.plot(episodes, moving_average_episode_rewards)
     plt.show()
-
-
 
     states = create_random_states(5, gate_count=5, qubit_num=MAX_QUBITS)
 
