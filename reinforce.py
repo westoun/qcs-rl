@@ -14,6 +14,7 @@ from quasim.gates import (
     CGate
 )
 from random import seed
+from statistics import mean
 from typing import Union
 
 from utils.circuit import create_random_circuit, create_random_states, update_state, decomplexify_vector
@@ -213,7 +214,7 @@ if __name__ == "__main__":
             episodes.append(episode)
 
             if len(episode_rewards) <= MOVING_AVERAGE_WINDOW:
-                moving_average_episode_rewards.append(episode_reward)
+                moving_average_episode_rewards.append(mean(episode_rewards))
             else:
                 moving_average = (sum(
                     moving_average_episode_rewards[-MOVING_AVERAGE_WINDOW + 1:]) + episode_reward) / MOVING_AVERAGE_WINDOW
