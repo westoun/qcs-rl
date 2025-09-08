@@ -49,7 +49,7 @@ def measure_distance_to_target(state: np.ndarray) -> float:
     return total_distance
 
 
-def compute_reward(state: np.ndarray, punishment_term: float = 1) -> float:
+def compute_reward(state: np.ndarray, punishment_term: float = 2) -> float:
     distance = min_entanglement_entropy(state)
 
     if distance == 0:
@@ -182,7 +182,7 @@ if __name__ == "__main__":
     seed(1)
     torch.manual_seed(0)
 
-    GAMMA = 0.75
+    GAMMA = 0.1
     EPISODES = 20000
     EPISODE_LENGTH = 10
 
@@ -205,6 +205,8 @@ if __name__ == "__main__":
 
     EPSILON = 1
 
+    GATE_LOG ={}
+
     for episode in range(EPISODES):
         logging.debug(f"Starting episode {episode}")
 
@@ -223,8 +225,13 @@ if __name__ == "__main__":
         logging.debug(f"\tStart state: {state}")
 
         # half epsilon after every 2000 episodes
-        if episode > 0 and (episode + 1) % 2000 == 0:
+        if episode > 0 and (episode + 1) % 1000 == 0:
+            print(f"Epsilon: {EPSILON}")
             EPSILON = EPSILON * 0.8
+            
+            from pprint import pprint 
+            pprint(GATE_LOG)
+            GATE_LOG = {}
 
         # generate episode data
         for t in range(EPISODE_LENGTH):
@@ -263,6 +270,11 @@ if __name__ == "__main__":
                 gate = get_gate(gate_type, target_qubit)
 
             logging.debug(f"\tAdding gate {gate}")
+
+            if gate.__repr__() in GATE_LOG:
+                GATE_LOG[gate.__repr__()] += 1
+            else:
+                GATE_LOG[gate.__repr__()] = 1
 
             new_state = update_state(state, gate)
 
