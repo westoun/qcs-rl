@@ -49,7 +49,7 @@ def measure_distance_to_target(state: np.ndarray) -> float:
     return total_distance
 
 
-def compute_reward(state: np.ndarray, punishment_term: float = 0.1) -> float:
+def compute_reward(state: np.ndarray, punishment_term: float = 1) -> float:
     distance = min_entanglement_entropy(state)
 
     if distance == 0:
@@ -182,7 +182,7 @@ if __name__ == "__main__":
     seed(1)
     torch.manual_seed(0)
 
-    GAMMA = 0.95
+    GAMMA = 0.75
     EPISODES = 20000
     EPISODE_LENGTH = 10
 
