@@ -182,7 +182,7 @@ if __name__ == "__main__":
     seed(1)
     torch.manual_seed(0)
 
-    GAMMA = 0.1
+    GAMMA = 0.95
     EPISODES = 20000
     EPISODE_LENGTH = 10
 
@@ -236,6 +236,10 @@ if __name__ == "__main__":
         # generate episode data
         for t in range(EPISODE_LENGTH):
 
+            if min_entanglement_entropy(state) == 0:
+                logging.debug(f"\tBreaking episode at t={t}.")
+                break
+
             gate_type_probs = gate_predictor(state)
             gate_type_dist = Categorical(gate_type_probs)
             gate_type = sample_epsilon_greedy(gate_type_dist, epsilon=EPSILON)
@@ -284,10 +288,6 @@ if __name__ == "__main__":
             rewards.append(reward)
 
             state = new_state
-
-            if min_entanglement_entropy(state) == 0:
-                logging.debug(f"\tBreaking episode at t={t}.")
-                break
 
         logging.debug(f"\tEnd state: {state}")
 
