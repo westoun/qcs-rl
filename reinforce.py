@@ -15,16 +15,17 @@ from quasim.gates import (
 )
 from random import seed
 from statistics import mean
-from typing import Union
-
-from utils.circuit import create_random_circuit, create_random_states, update_state, decomplexify_vector
-from utils.rl import sample_epsilon_greedy, sample, sample_best
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from torch.distributions import Categorical
+from typing import Union
+
+from utils.circuit import create_random_circuit, create_random_states, update_state, decomplexify_vector
+from utils.metrics import min_entanglement_entropy
+from utils.rl import sample_epsilon_greedy, sample, sample_best
+
 
 MAX_QUBITS = 2
 GATE_COUNT = 4  # Clifford gate set
@@ -41,21 +42,22 @@ def measure_distance_to_target(state: np.ndarray) -> float:
     return total_distance
 
 
-def compute_reward(state: np.ndarray, new_state: np.ndarray, punishment_term: float = 0.05) -> float:
+def compute_reward(state: np.ndarray, new_state: np.ndarray, punishment_term: float = 0.1) -> float:
+    distance_1 = min_entanglement_entropy(state)
 
-    # TODO: Replace with actual separability measure.
+    if distance_1 < 0.01 and new_state is None:
+        return 5
+    else:
+        return - punishment_term
 
-    distance_1 = measure_distance_to_target(state)
 
-    if new_state is None:
+    if new_state is None: # case: previous step output was no new gate
         if distance_1 < 0.01:
             return 2
         else:
             return -distance_1
 
-    # return -punishment_term
-
-    distance_2 = measure_distance_to_target(new_state)
+    distance_2 = min_entanglement_entropy(new_state)
     return - (distance_2 - distance_1) - punishment_term
 
 
@@ -125,10 +127,10 @@ if __name__ == "__main__":
     torch.manual_seed(0)
 
     GAMMA = 0.95
-    EPISODES = 10000
-    EPISODE_LENGTH = 8
+    EPISODES = 20000
+    EPISODE_LENGTH = 10
 
-    LOG_EVERY = 50
+    LOG_EVERY = 100
     MOVING_AVERAGE_WINDOW = 5
 
     actor = Actor()
@@ -145,7 +147,14 @@ if __name__ == "__main__":
         actions = []
         rewards = []
 
-        state = create_random_states(1, gate_count=5, qubit_num=MAX_QUBITS)[0]
+        # Start from entangled states to avoid getting stuck in 
+        # local optima always proposing none-gate.
+        for _ in range(100):
+            state = create_random_states(1, gate_count=20, qubit_num=MAX_QUBITS)[0]
+            
+            if min_entanglement_entropy(state) > 0:
+                break 
+
         logging.debug(f"\tStart state: {state}")
 
         # generate episode data
@@ -156,7 +165,7 @@ if __name__ == "__main__":
                 state)
 
             gate_type_dist = Categorical(gate_type_probs)
-            gate_type = sample_epsilon_greedy(gate_type_dist)
+            gate_type = sample_epsilon_greedy(gate_type_dist, epsilon=0.1)
 
             control_qubit_dist = Categorical(control_qubit_probs)
             control_qubit = sample_epsilon_greedy(control_qubit_dist)
@@ -252,7 +261,7 @@ if __name__ == "__main__":
     plt.plot(episodes, moving_average_episode_rewards)
     plt.show()
 
-    states = create_random_states(5, gate_count=5, qubit_num=MAX_QUBITS)
+    states = create_random_states(5, gate_count=20, qubit_num=MAX_QUBITS)
 
     for s, state in enumerate(states):
         print("\n====================")
@@ -261,7 +270,7 @@ if __name__ == "__main__":
 
         for t in range(EPISODE_LENGTH):
             print(f"\nstate_{t}: {state}")
-            print(f"\tDistance: {measure_distance_to_target(state)}")
+            print(f"\tDistance: {min_entanglement_entropy(state)}")
 
             gate_type_probs, control_qubit_probs, target_qubit_probs = actor(
                 state)
@@ -295,4 +304,4 @@ if __name__ == "__main__":
                 break
 
         print(f"\nFinal state: {state}")
-        print(f"\tFinal distance: {measure_distance_to_target(state)}")
+        print(f"\tFinal distance: {min_entanglement_entropy(state)}")
