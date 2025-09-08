@@ -1,3 +1,4 @@
+import numpy as np
 from random import seed, random, randint
 import torch
 import torch.nn as nn
