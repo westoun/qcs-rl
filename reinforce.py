@@ -76,10 +76,6 @@ class Actor(nn.Module):
         self.target_qubit_pred = nn.Linear(128, MAX_QUBITS)
 
     def forward(self, state):
-        """
-        forward of both actor and critic
-        """
-
         state = torch.tensor(decomplexify_vector(state), dtype=torch.float32)
 
         x = F.relu(self.hidden1(state))
