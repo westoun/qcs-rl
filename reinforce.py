@@ -12,7 +12,7 @@ from quasim.gates import (
     IGate,
     Gate,
     CGate,
-    RZ
+    Phase
 )
 from random import seed
 from statistics import mean
@@ -49,7 +49,6 @@ def measure_distance_to_target(state: np.ndarray) -> float:
     return total_distance
 
 
-
 def compute_reward(state: np.ndarray, punishment_term: float = 0.1) -> float:
     distance = min_entanglement_entropy(state)
 
@@ -82,7 +81,8 @@ class GatePredictor(nn.Module):
     def __init__(self):
         super(GatePredictor, self).__init__()
         # times 2 because state is split into real and imaginary
-        self.hidden_layer = nn.Linear(2 * 2 ** MAX_QUBITS, 128)
+        self.hidden_layer1 = nn.Linear(2 * 2 ** MAX_QUBITS, 128)
+        self.hidden_layer2 = nn.Linear(128, 128)
 
         # Avoid none output for now.
         self.gate_type_pred = nn.Linear(128, GATE_TYPE_COUNT)
@@ -90,8 +90,10 @@ class GatePredictor(nn.Module):
     def forward(self, state: np.ndarray):
         state = torch.tensor(decomplexify_vector(state), dtype=torch.float32)
 
-        hidden = F.relu(self.hidden_layer(state))
-        gate_type_probs = F.softmax(self.gate_type_pred(hidden), dim=-1)
+        hidden1 = F.relu(self.hidden_layer1(state))
+        hidden2 = F.relu(self.hidden_layer2(hidden1))
+
+        gate_type_probs = F.softmax(self.gate_type_pred(hidden2), dim=-1)
 
         return gate_type_probs
 
@@ -101,8 +103,11 @@ class TargetQubitPredictor(nn.Module):
     def __init__(self):
         super(TargetQubitPredictor, self).__init__()
 
-        self.hidden_layer = nn.Linear(
+        self.hidden_layer1 = nn.Linear(
             2 * 2 ** MAX_QUBITS + GATE_TYPE_COUNT, 128)
+        self.hidden_layer2 = nn.Linear(
+            128, 128)
+
         self.target_qubit_pred = nn.Linear(128, MAX_QUBITS)
 
     def forward(self, state: np.ndarray, gate_one_hot: np.ndarray):
@@ -111,8 +116,10 @@ class TargetQubitPredictor(nn.Module):
         input_vector = torch.tensor(np.concatenate(
             [state, gate_one_hot]), dtype=torch.float32)
 
-        hidden = F.relu(self.hidden_layer(input_vector))
-        target_qubit_probs = F.softmax(self.target_qubit_pred(hidden), dim=-1)
+        hidden1 = F.relu(self.hidden_layer1(input_vector))
+        hidden2 = F.relu(self.hidden_layer2(hidden1))
+
+        target_qubit_probs = F.softmax(self.target_qubit_pred(hidden2), dim=-1)
 
         return target_qubit_probs
 
@@ -122,8 +129,11 @@ class ControlQubitPredictor(nn.Module):
     def __init__(self):
         super(ControlQubitPredictor, self).__init__()
 
-        self.hidden_layer = nn.Linear(
+        self.hidden_layer1 = nn.Linear(
             2 * 2 ** MAX_QUBITS + GATE_TYPE_COUNT + MAX_QUBITS, 128)
+        self.hidden_layer2 = nn.Linear(
+            128, 128)
+
         self.control_qubit_pred = nn.Linear(128, MAX_QUBITS)
 
     def forward(self, state: np.ndarray, gate_one_hot: np.ndarray, target_qubit_one_hot: np.ndarray):
@@ -132,9 +142,11 @@ class ControlQubitPredictor(nn.Module):
         input_vector = torch.tensor(np.concatenate(
             [state, gate_one_hot, target_qubit_one_hot]), dtype=torch.float32)
 
-        hidden = F.relu(self.hidden_layer(input_vector))
+        hidden1 = F.relu(self.hidden_layer1(input_vector))
+        hidden2 = F.relu(self.hidden_layer2(hidden1))
+
         control_qubit_probs = F.softmax(
-            self.control_qubit_pred(hidden), dim=-1)
+            self.control_qubit_pred(hidden2), dim=-1)
 
         return control_qubit_probs
 
@@ -149,10 +161,10 @@ def get_gate(gate_type_idx, target_qubit_idx, control_qubit_idx=None) -> Union[I
     elif gate_type_idx == 3:
 
         # Workaround to avoid same value target and control qubits.
-        # Identity gate was not available in current version of 
+        # Identity gate was not available in current version of
         # quasim.
         if control_qubit_idx == target_qubit_idx:
-            return RZ(target_qubit_idx, 0)
+            return Phase(target_qubit_idx, 0)
 
         return CX(control_qubit_idx, target_qubit_idx)
     else:
