@@ -46,7 +46,7 @@ def compute_reward(state: np.ndarray, new_state: np.ndarray, punishment_term: fl
     distance_1 = min_entanglement_entropy(state)
 
     if distance_1 < 0.01 and new_state is None:
-        return 5
+        return 10
     else:
         return - punishment_term
 
@@ -137,6 +137,8 @@ if __name__ == "__main__":
     moving_average_episode_rewards = []
     episodes = []
 
+    EPSILON = 1
+
     for episode in range(EPISODES):
         logging.debug(f"Starting episode {episode}")
 
@@ -153,6 +155,11 @@ if __name__ == "__main__":
 
         logging.debug(f"\tStart state: {state}")
 
+
+        # half epsilon after every 2000 episodes
+        if episode > 0 and (episode + 1) % 2000 == 0:
+            EPSILON = EPSILON * 0.8
+
         # generate episode data
         for t in range(EPISODE_LENGTH):
 
@@ -161,13 +168,13 @@ if __name__ == "__main__":
                 state)
 
             gate_type_dist = Categorical(gate_type_probs)
-            gate_type = sample_epsilon_greedy(gate_type_dist, epsilon=0.1)
+            gate_type = sample_epsilon_greedy(gate_type_dist, epsilon=EPSILON)
 
             control_qubit_dist = Categorical(control_qubit_probs)
-            control_qubit = sample_epsilon_greedy(control_qubit_dist)
+            control_qubit = sample_epsilon_greedy(control_qubit_dist, epsilon=EPSILON)
 
             target_qubit_dist = Categorical(target_qubit_probs)
-            target_qubit = sample_epsilon_greedy(target_qubit_dist)
+            target_qubit = sample_epsilon_greedy(target_qubit_dist, epsilon=EPSILON)
 
             actions.append([
                 gate_type_dist.log_prob(gate_type),
