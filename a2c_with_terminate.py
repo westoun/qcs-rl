@@ -67,7 +67,7 @@ class GatePredictor(nn.Module):
         self.hidden_layer2 = nn.Linear(16, 16)
 
         # Avoid none output for now.
-        self.gate_type_pred = nn.Linear(16, GATE_TYPE_COUNT)
+        self.gate_type_pred = nn.Linear(16, GATE_TYPE_COUNT + 1)
 
     def forward(self, state: np.ndarray):
         state = torch.tensor(decomplexify_vector(state), dtype=torch.float32)
@@ -86,7 +86,7 @@ class TargetQubitPredictor(nn.Module):
         super(TargetQubitPredictor, self).__init__()
 
         self.hidden_layer1 = nn.Linear(
-            2 * 2 ** MAX_QUBITS + GATE_TYPE_COUNT, 16)
+            2 * 2 ** MAX_QUBITS + GATE_TYPE_COUNT + 1, 16)
         self.hidden_layer2 = nn.Linear(
             16, 16)
 
@@ -112,7 +112,7 @@ class ControlQubitPredictor(nn.Module):
         super(ControlQubitPredictor, self).__init__()
 
         self.hidden_layer1 = nn.Linear(
-            2 * 2 ** MAX_QUBITS + GATE_TYPE_COUNT + MAX_QUBITS, 16)
+            2 * 2 ** MAX_QUBITS + GATE_TYPE_COUNT + 1 + MAX_QUBITS, 16)
         self.hidden_layer2 = nn.Linear(
             16, 16)
 
@@ -167,6 +167,9 @@ def get_gate(gate_type_idx, target_qubit_idx, control_qubit_idx=None) -> Union[I
             return Phase(target_qubit_idx, 0)
 
         return CX(control_qubit_idx, target_qubit_idx)
+    elif gate_type_idx == 4:
+        return None
+
     else:
         raise NotImplementedError()
 
@@ -189,6 +192,9 @@ if __name__ == "__main__":
     LOG_EVERY = 100
     MOVING_AVERAGE_WINDOW = 5
 
+    SEPARABILITY_REWARD = 10
+    PUNISHMENT_TERM = 2
+
     gate_predictor = GatePredictor()
     target_qubit_predictor = TargetQubitPredictor()
     control_qubit_predictor = ControlQubitPredictor()
@@ -200,16 +206,16 @@ if __name__ == "__main__":
         target_qubit_predictor.parameters(), lr=3e-2)
     control_qubit_optimizer = optim.Adam(
         control_qubit_predictor.parameters(), lr=3e-2)
-    
+
     critic_optimizer = optim.Adam(critic.parameters(), lr=3e-2)
 
     episode_rewards = []
     moving_average_episode_rewards = []
     episodes = []
 
-    EPSILON = 1
+    EPSILON = 0.2
 
-    GATE_LOG ={}
+    GATE_LOG = {}
 
     for episode in range(EPISODES):
         logging.debug(f"Starting episode {episode}")
@@ -229,8 +235,8 @@ if __name__ == "__main__":
         if episode > 0 and (episode + 1) % 1000 == 0:
             print(f"Epsilon: {EPSILON}")
             EPSILON = EPSILON * 0.8
-            
-            from pprint import pprint 
+
+            from pprint import pprint
             pprint(GATE_LOG)
             GATE_LOG = {}
 
@@ -241,17 +247,25 @@ if __name__ == "__main__":
         # generate episode data
         for t in range(EPISODE_LENGTH):
 
-            if min_entanglement_entropy(state) == 0:
-                logging.debug(f"\tBreaking episode at t={t}.")
-                break
-
             value = critic(state)
             values.append(value)
 
             gate_type_probs = gate_predictor(state)
             gate_type_dist = Categorical(gate_type_probs)
             gate_type = sample_epsilon_greedy(gate_type_dist, epsilon=EPSILON)
-            gate_one_hot = one_hot_encode(GATE_TYPE_COUNT, gate_type)
+            gate_one_hot = one_hot_encode(GATE_TYPE_COUNT + 1, gate_type)
+
+            if gate_type == 4:
+                actions.append([
+                    gate_type_dist.log_prob(gate_type),
+                ])
+
+                if min_entanglement_entropy == 0:
+                    rewards.append(SEPARABILITY_REWARD)
+                else:
+                    rewards.append(-50)
+
+                break
 
             target_qubit_probs = target_qubit_predictor(state, gate_one_hot)
             target_qubit_dist = Categorical(target_qubit_probs)
@@ -288,14 +302,10 @@ if __name__ == "__main__":
             else:
                 GATE_LOG[gate.__repr__()] = 1
 
-            new_state = update_state(state, gate)
+            state = update_state(state, gate)
 
-            reward = compute_reward(new_state)
-            logging.debug(f"\tCurrent reward: {reward}")
-
+            reward = - PUNISHMENT_TERM
             rewards.append(reward)
-
-            state = new_state
 
         logging.debug(f"\tEnd state: {state}")
 
@@ -332,14 +342,17 @@ if __name__ == "__main__":
 
         for log_probs, value, discounted_reward in zip(actions, values, discounted_rewards):
             advantage = discounted_reward - value.item()
-            value_losses.append(F.smooth_l1_loss(value, torch.tensor([discounted_reward])))
+            value_losses.append(F.smooth_l1_loss(
+                value, torch.tensor([discounted_reward])))
 
             gate_type_losses.append(
                 -log_probs[0] * advantage
             )
-            target_qubit_losses.append(
-                -log_probs[1] * advantage
-            )
+
+            if len(log_probs) == 2:
+                target_qubit_losses.append(
+                    -log_probs[1] * advantage
+                )
 
             if len(log_probs) == 3:
                 control_qubit_losses.append(
@@ -354,9 +367,10 @@ if __name__ == "__main__":
         torch.stack(gate_type_losses).sum().backward(retain_graph=True)
         gate_optimizer.step()
 
-        target_qubit_optimizer.zero_grad()
-        torch.stack(target_qubit_losses).sum().backward(retain_graph=True)
-        target_qubit_optimizer.step()
+        if len(target_qubit_losses) > 0:
+            target_qubit_optimizer.zero_grad()
+            torch.stack(target_qubit_losses).sum().backward(retain_graph=True)
+            target_qubit_optimizer.step()
 
         if len(control_qubit_losses) > 0:
             control_qubit_optimizer.zero_grad()
@@ -378,14 +392,14 @@ if __name__ == "__main__":
             print(f"\nstate_{t}: {state}")
             print(f"\tDistance: {min_entanglement_entropy(state)}")
 
-            if min_entanglement_entropy(state) == 0.0:
-                print(f"\n\tFound unentangled state. Breaking!")
-                break
-
             gate_type_probs = gate_predictor(state)
             gate_type_dist = Categorical(gate_type_probs)
             gate_type = sample_best(gate_type_dist)
-            gate_one_hot = one_hot_encode(GATE_TYPE_COUNT, gate_type)
+            gate_one_hot = one_hot_encode(GATE_TYPE_COUNT + 1, gate_type)
+
+            if gate_type == 4:
+                print(f"\n\tTermination gate encountered. Breaking!")
+                break
 
             target_qubit_probs = target_qubit_predictor(state, gate_one_hot)
             target_qubit_dist = Categorical(target_qubit_probs)
@@ -408,12 +422,7 @@ if __name__ == "__main__":
 
             print(f"\tAdding gate {gate}")
 
-            new_state = update_state(state, gate)
-
-            reward = compute_reward(new_state)
-            rewards.append(reward)
-
-            state = new_state
+            state = update_state(state, gate)
 
         print(f"\nFinal state: {state}")
         print(f"\tFinal distance: {min_entanglement_entropy(state)}")
