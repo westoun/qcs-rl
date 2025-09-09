@@ -193,6 +193,9 @@ if __name__ == "__main__":
     SEPARABILITY_REWARD = 10
     PUNISHMENT_TERM = 2
 
+    EPSILON = 0.2
+    EPSILON_DECAY_RATE = 0.8
+
     gate_predictor = GatePredictor()
     target_qubit_predictor = TargetQubitPredictor()
     control_qubit_predictor = ControlQubitPredictor()
@@ -210,8 +213,6 @@ if __name__ == "__main__":
     episode_rewards = []
     moving_average_episode_rewards = []
     episodes = []
-
-    EPSILON = 0.2
 
     GATE_LOG = {}
 
@@ -232,7 +233,7 @@ if __name__ == "__main__":
         # half epsilon after every 2000 episodes
         if episode > 0 and (episode + 1) % 1000 == 0:
             print(f"Epsilon: {EPSILON}")
-            EPSILON = EPSILON * 0.8
+            EPSILON = EPSILON * EPSILON_DECAY_RATE
 
             from pprint import pprint
             pprint(GATE_LOG)
