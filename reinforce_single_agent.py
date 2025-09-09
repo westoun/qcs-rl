@@ -242,21 +242,50 @@ if __name__ == "__main__":
         control_qubit_losses = []
 
         for (gate_type_logprob, target_qubit_logprob, control_qubit_logprob), gate, discounted_reward in zip(actions, gates, discounted_rewards):
-            gate_type_losses.append(
-                -gate_type_logprob * discounted_reward
-            )
-            target_qubit_losses.append(
-                -target_qubit_logprob * discounted_reward
-            )
-            control_qubit_losses.append(
-                -control_qubit_logprob * discounted_reward
-            )
+
+            if type(gate) == Phase:
+
+                gate_type_losses.append(
+                    torch.zeros_like(gate_type_logprob, requires_grad=True)
+                )
+                target_qubit_losses.append(
+                    torch.zeros_like(target_qubit_logprob, requires_grad=True)
+                )
+
+                # punish control qubit
+                # mask the rest
+                control_qubit_losses.append(
+                    -control_qubit_logprob * -1000
+                )
+            elif not type(gate) == CX:
+                gate_type_losses.append(
+                    -gate_type_logprob * discounted_reward
+                )
+                target_qubit_losses.append(
+                    -target_qubit_logprob * discounted_reward
+                )
+
+                # mask control_qubit values
+                control_qubit_losses.append(
+                    torch.zeros_like(control_qubit_logprob, requires_grad=True))
+
+            # case: cx gate
+            else:
+                gate_type_losses.append(
+                    -gate_type_logprob * discounted_reward
+                )
+                target_qubit_losses.append(
+                    -target_qubit_logprob * discounted_reward
+                )
+                control_qubit_losses.append(
+                    -control_qubit_logprob * discounted_reward
+                )
 
         optimizer.zero_grad()
 
         torch.stack(gate_type_losses).sum().backward(retain_graph=True)
-        torch.stack(control_qubit_losses).sum().backward(retain_graph=True)
         torch.stack(target_qubit_losses).sum().backward(retain_graph=True)
+        torch.stack(control_qubit_losses).sum().backward(retain_graph=True)
 
         optimizer.step()
 
