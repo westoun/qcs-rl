@@ -138,7 +138,7 @@ if __name__ == "__main__":
     moving_average_episode_rewards = []
     episodes = []
 
-    EPSILON = 1
+    EPSILON = 0.2
 
     GATE_LOG = {}
 
