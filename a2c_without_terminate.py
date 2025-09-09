@@ -185,7 +185,7 @@ if __name__ == "__main__":
 
     GAMMA = 0.95
     EPISODES = 20000
-    EPISODE_LENGTH = 10
+    EPISODE_LENGTH = 5
 
     LOG_EVERY = 100
     MOVING_AVERAGE_WINDOW = 5
@@ -193,8 +193,8 @@ if __name__ == "__main__":
     SEPARABILITY_REWARD = 10
     PUNISHMENT_TERM = 2
 
-    EPSILON = 0.2
-    EPSILON_DECAY_RATE = 0.8
+    EPSILON = 0.1
+    EPSILON_DECAY_RATE = 0.95
 
     gate_predictor = GatePredictor()
     target_qubit_predictor = TargetQubitPredictor()
@@ -277,6 +277,18 @@ if __name__ == "__main__":
                     target_qubit_dist.log_prob(target_qubit),
                     control_qubit_dist.log_prob(control_qubit)
                 ])
+
+                if control_qubit == target_qubit:
+                    rewards.append(-PUNISHMENT_TERM * EPISODE_LENGTH / 2)
+                    logging.debug(f"\tBreaking because of invalid gate.")
+
+                    if "invalid" in GATE_LOG:
+                        GATE_LOG["invalid"] += 1
+                    else:
+                        GATE_LOG["invalid"] = 1
+
+                    break
+
                 gate = get_gate(gate_type, target_qubit, control_qubit)
 
             else:
@@ -295,7 +307,7 @@ if __name__ == "__main__":
 
             state = update_state(state, gate)
 
-            reward = - PUNISHMENT_TERM
+            reward = compute_reward(state)
             rewards.append(reward)
 
         logging.debug(f"\tEnd state: {state}")
