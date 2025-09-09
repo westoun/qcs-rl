@@ -210,9 +210,6 @@ if __name__ == "__main__":
     for episode in range(EPISODES):
         logging.debug(f"Starting episode {episode}")
 
-        actions = []
-        rewards = []
-
         # Start from entangled states to avoid getting stuck in
         # local optima always proposing none-gate.
         for _ in range(100):
@@ -232,6 +229,9 @@ if __name__ == "__main__":
             from pprint import pprint 
             pprint(GATE_LOG)
             GATE_LOG = {}
+
+        actions = []
+        rewards = []
 
         # generate episode data
         for t in range(EPISODE_LENGTH):
@@ -345,9 +345,6 @@ if __name__ == "__main__":
             control_qubit_optimizer.zero_grad()
             torch.stack(control_qubit_losses).sum().backward(retain_graph=True)
             control_qubit_optimizer.step()
-
-        actions = []
-        rewards = []
 
     plt.plot(episodes, episode_rewards)
     plt.plot(episodes, moving_average_episode_rewards)
