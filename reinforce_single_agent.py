@@ -146,6 +146,7 @@ if __name__ == "__main__":
         logging.debug(f"Starting episode {episode}")
 
         actions = []
+        gates = []
         rewards = []
 
         # Start from entangled states to avoid getting stuck in
@@ -196,6 +197,7 @@ if __name__ == "__main__":
             ])
 
             gate = get_gate(gate_type, target_qubit, control_qubit)
+            gates.append(gate)
             logging.debug(f"\tAdding gate {gate}")
 
             if gate.__repr__() in GATE_LOG:
@@ -239,16 +241,15 @@ if __name__ == "__main__":
         target_qubit_losses = []
         control_qubit_losses = []
 
-        for (gate_type_logprob, control_qubit_logprob, target_qubit_logprob), discounted_reward in zip(actions, discounted_rewards):
-
+        for (gate_type_logprob, target_qubit_logprob, control_qubit_logprob), gate, discounted_reward in zip(actions, gates, discounted_rewards):
             gate_type_losses.append(
                 -gate_type_logprob * discounted_reward
             )
-            control_qubit_losses.append(
-                -control_qubit_logprob * discounted_reward
-            )
             target_qubit_losses.append(
                 -target_qubit_logprob * discounted_reward
+            )
+            control_qubit_losses.append(
+                -control_qubit_logprob * discounted_reward
             )
 
         optimizer.zero_grad()
