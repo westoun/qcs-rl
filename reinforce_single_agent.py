@@ -63,16 +63,16 @@ class Agent(nn.Module):
     def __init__(self):
         super(Agent, self).__init__()
         # times 2 because state is split into real and imaginary
-        self.input_layer = nn.Linear(2 * 2 ** MAX_QUBITS, 128)
+        self.input_layer = nn.Linear(2 * 2 ** MAX_QUBITS, 16)
 
-        self.gate_type_hidden = nn.Linear(128, 128)
-        self.target_qubit_hidden = nn.Linear(128, 128)
-        self.control_qubit_hidden = nn.Linear(128, 128)
+        self.gate_type_hidden = nn.Linear(16, 16)
+        self.target_qubit_hidden = nn.Linear(16, 16)
+        self.control_qubit_hidden = nn.Linear(16, 16)
 
         # Avoid none output for now.
-        self.gate_type_output = nn.Linear(128, GATE_TYPE_COUNT)
-        self.target_qubit_output = nn.Linear(128, MAX_QUBITS)
-        self.control_qubit_output = nn.Linear(128, MAX_QUBITS)
+        self.gate_type_output = nn.Linear(16, GATE_TYPE_COUNT)
+        self.target_qubit_output = nn.Linear(16, MAX_QUBITS)
+        self.control_qubit_output = nn.Linear(16, MAX_QUBITS)
 
     def forward(self, state: np.ndarray):
         state = torch.tensor(decomplexify_vector(state), dtype=torch.float32)

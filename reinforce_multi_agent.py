@@ -81,11 +81,11 @@ class GatePredictor(nn.Module):
     def __init__(self):
         super(GatePredictor, self).__init__()
         # times 2 because state is split into real and imaginary
-        self.hidden_layer1 = nn.Linear(2 * 2 ** MAX_QUBITS, 128)
-        self.hidden_layer2 = nn.Linear(128, 128)
+        self.hidden_layer1 = nn.Linear(2 * 2 ** MAX_QUBITS, 16)
+        self.hidden_layer2 = nn.Linear(16, 16)
 
         # Avoid none output for now.
-        self.gate_type_pred = nn.Linear(128, GATE_TYPE_COUNT)
+        self.gate_type_pred = nn.Linear(16, GATE_TYPE_COUNT)
 
     def forward(self, state: np.ndarray):
         state = torch.tensor(decomplexify_vector(state), dtype=torch.float32)
@@ -104,11 +104,11 @@ class TargetQubitPredictor(nn.Module):
         super(TargetQubitPredictor, self).__init__()
 
         self.hidden_layer1 = nn.Linear(
-            2 * 2 ** MAX_QUBITS + GATE_TYPE_COUNT, 128)
+            2 * 2 ** MAX_QUBITS + GATE_TYPE_COUNT, 16)
         self.hidden_layer2 = nn.Linear(
-            128, 128)
+            16, 16)
 
-        self.target_qubit_pred = nn.Linear(128, MAX_QUBITS)
+        self.target_qubit_pred = nn.Linear(16, MAX_QUBITS)
 
     def forward(self, state: np.ndarray, gate_one_hot: np.ndarray):
         state = decomplexify_vector(state)
@@ -130,11 +130,11 @@ class ControlQubitPredictor(nn.Module):
         super(ControlQubitPredictor, self).__init__()
 
         self.hidden_layer1 = nn.Linear(
-            2 * 2 ** MAX_QUBITS + GATE_TYPE_COUNT + MAX_QUBITS, 128)
+            2 * 2 ** MAX_QUBITS + GATE_TYPE_COUNT + MAX_QUBITS, 16)
         self.hidden_layer2 = nn.Linear(
-            128, 128)
+            16, 16)
 
-        self.control_qubit_pred = nn.Linear(128, MAX_QUBITS)
+        self.control_qubit_pred = nn.Linear(16, MAX_QUBITS)
 
     def forward(self, state: np.ndarray, gate_one_hot: np.ndarray, target_qubit_one_hot: np.ndarray):
         state = decomplexify_vector(state)
