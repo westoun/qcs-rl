@@ -64,6 +64,20 @@ def get_gate(gate_type: int, target_qubit: int, control_qubit: int) -> IGate:
         raise NotImplementedError()
 
 
+def compute_reward(state, gate_type, invalid_action, step_limit_reached) -> float:
+    if invalid_action:
+        return - 10
+
+    if gate_type == TERMINATE:
+        if min_entanglement_entropy(state) == 0:
+            return 1000
+        else:
+            return 1
+
+    # case normal state update
+    return -0.01
+
+
 class StateSeparatorEnv(gym.Env):
     # metadata = {"render_modes": ["console"]}
     render_mode = "console"
@@ -88,30 +102,21 @@ class StateSeparatorEnv(gym.Env):
         self.step_count += 1
         step_limit_reached = self.step_count == MAX_STEPS
 
-        terminate = False
+        invalid_action = not is_valid_action(
+            gate_type, target_qubit, control_qubit)
+        terminate = bool(invalid_action or gate_type == TERMINATE)
 
-        if not is_valid_action(gate_type, target_qubit, control_qubit):
-            terminate = True
-            reward = -10
-
-        elif gate_type == TERMINATE:
-            terminate = True
-
-            if min_entanglement_entropy(self.state) == 0:
-                reward = 1000
-            else:
-                reward = - 1
-
-        # elif step_limit_reached:
-        #     reward = -1
-
-        else:
+        if not terminate:
             gate = get_gate(gate_type, target_qubit, control_qubit)
             self.state = update_state(self.state, gate)
 
-            reward = -0.01
-
         observation = decomplexify_vector(self.state)
+        reward = compute_reward(
+            state=self.state, 
+            gate_type=gate_type,
+            invalid_action=invalid_action,
+            step_limit_reached=step_limit_reached
+        )
 
         return observation, reward, terminate, step_limit_reached, {"state": self.state}
 
@@ -151,7 +156,8 @@ if __name__ == "__main__":
     env = StateSeparatorEnv(seed=1)
     check_env(env)
 
-    model = PPO("MlpPolicy", env, verbose=1, seed=1).learn(20000, log_interval=1000)
+    model = PPO("MlpPolicy", env, verbose=1, seed=1).learn(
+        20000, log_interval=1000)
 
     test_count = 5
     for i in range(test_count):
