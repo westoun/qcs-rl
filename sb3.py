@@ -24,7 +24,7 @@ from utils.metrics import min_entanglement_entropy
 
 QUBIT_NUM = 2
 GATE_TYPE_COUNT = 4  # Clifford gate set
-MAX_STEPS = 8
+MAX_STEPS = 10
 
 # Constants of action space
 H_GATE = 0
@@ -64,7 +64,7 @@ def get_gate(gate_type: int, target_qubit: int, control_qubit: int) -> IGate:
         raise NotImplementedError()
 
 
-def compute_reward(state, gate_type, invalid_action, step_limit_reached) -> float:
+def compute_reward(state, gate_type, invalid_action, step_limit_reached, gate_history, state_history) -> float:
     if invalid_action:
         return - 10
 
@@ -72,7 +72,11 @@ def compute_reward(state, gate_type, invalid_action, step_limit_reached) -> floa
         if min_entanglement_entropy(state) == 0:
             return 1000
         else:
-            return 1
+            return -1
+
+    # punish suggestion of the same gate twice in a row
+    if len(gate_history) > 1 and gate_history[-1].__repr__() == gate_history[-2].__repr__():
+        return - 5
 
     # case normal state update
     return -0.01
@@ -84,6 +88,9 @@ class StateSeparatorEnv(gym.Env):
 
     state: np.ndarray
     step_count: int
+
+    state_history: List
+    gate_history: List
 
     def __init__(self, seed: int = None):
         super().__init__()
@@ -110,12 +117,17 @@ class StateSeparatorEnv(gym.Env):
             gate = get_gate(gate_type, target_qubit, control_qubit)
             self.state = update_state(self.state, gate)
 
+            self.gate_history.append(gate)
+            self.state_history.append(self.state)
+
         observation = decomplexify_vector(self.state)
         reward = compute_reward(
-            state=self.state, 
+            state=self.state,
             gate_type=gate_type,
             invalid_action=invalid_action,
-            step_limit_reached=step_limit_reached
+            step_limit_reached=step_limit_reached,
+            gate_history=self.gate_history,
+            state_history=self.state_history
         )
 
         return observation, reward, terminate, step_limit_reached, {"state": self.state}
@@ -135,6 +147,8 @@ class StateSeparatorEnv(gym.Env):
 
         self.state = state
         self.step_count = 0
+        self.gate_history = []
+        self.state_history = [self.state]
 
         observation = decomplexify_vector(self.state)
         return observation, {"state": self.state}
