@@ -14,6 +14,7 @@ from quasim.gates import (
 )
 from quasim.gates.utils import create_matrix, create_controlled_matrix
 import random
+from stable_baselines3 import PPO, A2C, DQN
 from stable_baselines3.common.env_checker import check_env
 import torch
 from typing import List, Union
@@ -63,18 +64,6 @@ def get_gate(gate_type: int, target_qubit: int, control_qubit: int) -> IGate:
         raise NotImplementedError()
 
 
-def compute_reward(state: np.ndarray, invalid_gate: bool = False) -> float:
-    if invalid_gate:
-        return - 20
-
-    distance = min_entanglement_entropy(state)
-
-    if distance == 0:
-        return 10
-    else:
-        return - 0.5
-
-
 class StateSeparatorEnv(gym.Env):
     # metadata = {"render_modes": ["console"]}
     render_mode = "console"
@@ -85,7 +74,7 @@ class StateSeparatorEnv(gym.Env):
     def __init__(self, seed: int = None):
         super().__init__()
         self.action_space = spaces.MultiDiscrete(
-            [GATE_TYPE_COUNT, QUBIT_NUM, QUBIT_NUM])
+            [GATE_TYPE_COUNT + 1, QUBIT_NUM, QUBIT_NUM])
         self.observation_space = spaces.Box(low=-1, high=1,
                                             shape=(2 * 2 ** QUBIT_NUM, ), dtype=np.float64)
 
@@ -97,29 +86,39 @@ class StateSeparatorEnv(gym.Env):
         gate_type, target_qubit, control_qubit = action
 
         self.step_count += 1
-
         step_limit_reached = self.step_count == MAX_STEPS
 
-        # Need to cast because otherwise evaluates to numpy.bool
-        termination_requested = bool(gate_type == TERMINATE)
+        terminate = False
 
         if not is_valid_action(gate_type, target_qubit, control_qubit):
-            reward = compute_reward(self.state, invalid_gate=True)
+            terminate = True
+            reward = -10
+
+        elif gate_type == TERMINATE:
+            terminate = True
+
+            if min_entanglement_entropy(self.state) == 0:
+                reward = 1000
+            else:
+                reward = - 1
+
+        # elif step_limit_reached:
+        #     reward = -1
 
         else:
             gate = get_gate(gate_type, target_qubit, control_qubit)
-
             self.state = update_state(self.state, gate)
-            reward = compute_reward(self.state)
+
+            reward = -0.01
 
         observation = decomplexify_vector(self.state)
-        return observation, reward, termination_requested, step_limit_reached, {}
+
+        return observation, reward, terminate, step_limit_reached, {"state": self.state}
 
     def reset(self, seed=None, options=None):
         if seed is not None:
             random.seed(seed)
 
-        # TODO: Move to separate function
         # Start from entangled states to avoid getting stuck in
         # local optima always proposing none-gate.
         for _ in range(100):
@@ -133,7 +132,7 @@ class StateSeparatorEnv(gym.Env):
         self.step_count = 0
 
         observation = decomplexify_vector(self.state)
-        return observation, {}
+        return observation, {"state": self.state}
 
     def render(self):
         if self.render_mode == "console":
@@ -149,6 +148,34 @@ class StateSeparatorEnv(gym.Env):
 
 if __name__ == "__main__":
 
-    env = StateSeparatorEnv()
-
+    env = StateSeparatorEnv(seed=1)
     check_env(env)
+
+    model = PPO("MlpPolicy", env, verbose=1, seed=1).learn(20000, log_interval=1000)
+
+    test_count = 5
+    for i in range(test_count):
+        print(f"\nTest case {i}")
+
+        obs, info = env.reset()
+        print(f"Target state: {info['state']}")
+
+        for step in range(MAX_STEPS):
+            action, _ = model.predict(obs, deterministic=True)
+
+            print(f"\tStep {step + 1}")
+            print(f"\tAction: {action}")
+
+            obs, reward, termination_requested, step_limit_reached, info = env.step(
+                action)
+
+            done = termination_requested or step_limit_reached
+
+            print(f"state= {info['state']}, reward= {reward}, done= {done}")
+
+            env.render()
+            if done:
+                # Note that the VecEnv resets automatically
+                # when a done signal is encountered
+                print(f"\n\tGoal reached! reward= {reward}")
+                break
