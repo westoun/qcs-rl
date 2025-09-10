@@ -2,4 +2,5 @@ matplotlib==3.9
 PennyLane==0.38.0
 autoray==0.7.0
 quasim==1.0.0
+stable_baselines3==2.7.0
 torch==2.7
