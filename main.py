@@ -1,18 +1,5 @@
 
-import gymnasium as gym
-from gymnasium import spaces
 import matplotlib.pyplot as plt
-import numpy as np
-from quasim import QuaSim, Circuit, get_unitary
-from quasim.gates import (
-    H,
-    S,
-    T,
-    CX,
-    IGate,
-    Gate,
-    CGate
-)
 from quasim.gates.utils import create_matrix, create_controlled_matrix
 import random
 from stable_baselines3 import PPO, A2C, DQN
@@ -22,6 +9,7 @@ from stable_baselines3.common.results_plotter import plot_results, X_TIMESTEPS
 import torch
 from typing import List, Union
 
+from environment import StateSeparatorEnv
 from utils.circuit import decomplexify_vector, create_random_circuit, update_state
 from utils.metrics import min_entanglement_entropy
 
@@ -29,154 +17,19 @@ QUBIT_NUM = 2
 GATE_TYPE_COUNT = 4  # Clifford gate set
 MAX_STEPS = 10
 
-# Constants of action space
-H_GATE = 0
-S_GATE = 1
-T_GATE = 2
-CX_GATE = 3
-
-
-def create_random_state(gate_count: int = 5, qubit_num: int = 2) -> np.ndarray:
-    # TODO: Move to utils.
-    circuit = create_random_circuit(gate_count, qubit_num)
-
-    simulator = QuaSim()
-    simulator.evaluate([circuit])
-
-    return circuit.state
-
-
-def is_valid_action(gate_type: int, target_qubit: int, control_qubit: int) -> bool:
-    if gate_type == CX_GATE:
-        return target_qubit != control_qubit
-
-    return True
-
-
-def get_gate(gate_type: int, target_qubit: int, control_qubit: int) -> IGate:
-    if gate_type == 0:
-        return H(target_qubit)
-    elif gate_type == 1:
-        return S(target_qubit)
-    elif gate_type == 2:
-        return T(target_qubit)
-    elif gate_type == 3:
-        return CX(control_qubit, target_qubit)
-    else:
-        raise NotImplementedError()
-
-
-def compute_reward(state, gate_type, invalid_action, step_limit_reached, gate_history, state_history) -> float:
-    if invalid_action:
-        return - 20
-
-    if min_entanglement_entropy(state) == 0:  # is state separable?
-        return 1000
-
-    # punish suggestion of the same gate twice in a row
-    if len(gate_history) > 1 and gate_history[-1].__repr__() == gate_history[-2].__repr__():
-        return - 10
-
-    # case normal state update
-    return -0.01
-
-
-class StateSeparatorEnv(gym.Env):
-    # metadata = {"render_modes": ["console"]}
-    render_mode = "console"
-
-    state: np.ndarray
-    step_count: int
-
-    state_history: List
-    gate_history: List
-
-    def __init__(self, seed: int = None):
-        super().__init__()
-        self.action_space = spaces.MultiDiscrete(
-            [GATE_TYPE_COUNT, QUBIT_NUM, QUBIT_NUM])
-        self.observation_space = spaces.Box(low=-1, high=1,
-                                            shape=(2 * 2 ** QUBIT_NUM, ), dtype=np.float64)
-
-        if seed is not None:
-            # TODO: set other seeds as well
-            random.seed(seed)
-
-    def step(self, action):
-        gate_type, target_qubit, control_qubit = action
-
-        self.step_count += 1
-        step_limit_reached = self.step_count == MAX_STEPS
-
-        invalid_action = not is_valid_action(
-            gate_type, target_qubit, control_qubit)
-        
-        if not invalid_action:
-            gate = get_gate(gate_type, target_qubit, control_qubit)
-            self.state = update_state(self.state, gate)
-
-            self.gate_history.append(gate)
-            self.state_history.append(self.state)
-
-        observation = decomplexify_vector(self.state)
-        reward = compute_reward(
-            state=self.state,
-            gate_type=gate_type,
-            invalid_action=invalid_action,
-            step_limit_reached=step_limit_reached,
-            gate_history=self.gate_history,
-            state_history=self.state_history
-        )
-
-        found_solution = bool(min_entanglement_entropy(self.state) == 0)
-        return observation, reward, found_solution, step_limit_reached, {"state": self.state}
-
-    def reset(self, seed=None, options=None):
-        if seed is not None:
-            random.seed(seed)
-
-        # Start from entangled states to avoid getting stuck in
-        # local optima always proposing none-gate.
-        for _ in range(100):
-            state = create_random_state(
-                gate_count=20, qubit_num=QUBIT_NUM)
-
-            if min_entanglement_entropy(state) > 0:
-                break
-
-        self.state = state
-        self.step_count = 0
-        self.gate_history = []
-        self.state_history = [self.state]
-
-        observation = decomplexify_vector(self.state)
-        return observation, {"state": self.state}
-
-    def render(self):
-        if self.render_mode == "console":
-            # TODO: Figure out what to put here.
-            pass
-        else:
-            raise NotImplementedError(
-                f"Render mode '{self.render_mode}' has no implementation specified.")
-
-    def close(self):
-        pass
-
-
 if __name__ == "__main__":
 
     log_dir = "tmp/"
 
     random.seed(1)
 
-    env = StateSeparatorEnv(seed=1)
+    env = StateSeparatorEnv(qubit_num=QUBIT_NUM, max_steps=MAX_STEPS)
     env = Monitor(env, "tmp/")
 
     check_env(env)
 
     model = PPO("MlpPolicy", env, verbose=1, seed=1)
-    model.learn(total_timesteps=100_000, log_interval=1000, progress_bar=True)
+    model.learn(total_timesteps=300_000, log_interval=1000, progress_bar=True)
 
     plot_results(["tmp/"], None, x_axis=X_TIMESTEPS, task_name="QCS")
     plt.show()
@@ -207,8 +60,7 @@ if __name__ == "__main__":
                 # when a done signal is encountered
                 print(f"\n\tGoal reached! reward= {reward}")
                 break
-            
+
             if step_limit_reached:
                 print(f"\n\tBreaking because max steps exceeded.")
                 break
-
