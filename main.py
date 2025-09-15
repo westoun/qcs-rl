@@ -42,7 +42,7 @@ if __name__ == "__main__":
     check_env(env)
 
     model = PPO("MlpPolicy", env, verbose=1, seed=1)
-    model.learn(total_timesteps=1_000_000, log_interval=1_000,
+    model.learn(total_timesteps=2_000_000, log_interval=1_000,
                 progress_bar=True, callback=eval_callback)
 
     test_count = 5
