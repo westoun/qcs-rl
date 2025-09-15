@@ -176,7 +176,7 @@ if __name__ == "__main__":
     check_env(env)
 
     model = PPO("MlpPolicy", env, verbose=1, seed=1)
-    model.learn(total_timesteps=100_000, log_interval=1000)
+    model.learn(total_timesteps=100_000, log_interval=1000, progress_bar=True)
 
     plot_results(["tmp/"], None, x_axis=X_TIMESTEPS, task_name="QCS")
     plt.show()
