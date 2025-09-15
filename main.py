@@ -34,7 +34,6 @@ H_GATE = 0
 S_GATE = 1
 T_GATE = 2
 CX_GATE = 3
-TERMINATE = 4
 
 
 def create_random_state(gate_count: int = 5, qubit_num: int = 2) -> np.ndarray:
@@ -69,17 +68,14 @@ def get_gate(gate_type: int, target_qubit: int, control_qubit: int) -> IGate:
 
 def compute_reward(state, gate_type, invalid_action, step_limit_reached, gate_history, state_history) -> float:
     if invalid_action:
-        return - 10
+        return - 20
 
-    if gate_type == TERMINATE:
-        if min_entanglement_entropy(state) == 0:  # is state separable?
-            return 1000
-        else:
-            return -1
+    if min_entanglement_entropy(state) == 0:  # is state separable?
+        return 1000
 
     # punish suggestion of the same gate twice in a row
     if len(gate_history) > 1 and gate_history[-1].__repr__() == gate_history[-2].__repr__():
-        return - 5
+        return - 10
 
     # case normal state update
     return -0.01
@@ -98,7 +94,7 @@ class StateSeparatorEnv(gym.Env):
     def __init__(self, seed: int = None):
         super().__init__()
         self.action_space = spaces.MultiDiscrete(
-            [GATE_TYPE_COUNT + 1, QUBIT_NUM, QUBIT_NUM])
+            [GATE_TYPE_COUNT, QUBIT_NUM, QUBIT_NUM])
         self.observation_space = spaces.Box(low=-1, high=1,
                                             shape=(2 * 2 ** QUBIT_NUM, ), dtype=np.float64)
 
@@ -114,9 +110,8 @@ class StateSeparatorEnv(gym.Env):
 
         invalid_action = not is_valid_action(
             gate_type, target_qubit, control_qubit)
-        terminate = bool(invalid_action or gate_type == TERMINATE)
-
-        if not terminate:
+        
+        if not invalid_action:
             gate = get_gate(gate_type, target_qubit, control_qubit)
             self.state = update_state(self.state, gate)
 
@@ -133,7 +128,8 @@ class StateSeparatorEnv(gym.Env):
             state_history=self.state_history
         )
 
-        return observation, reward, terminate, step_limit_reached, {"state": self.state}
+        found_solution = bool(min_entanglement_entropy(self.state) == 0)
+        return observation, reward, found_solution, step_limit_reached, {"state": self.state}
 
     def reset(self, seed=None, options=None):
         if seed is not None:
@@ -198,16 +194,21 @@ if __name__ == "__main__":
             print(f"\tStep {step + 1}")
             print(f"\tAction: {action}")
 
-            obs, reward, termination_requested, step_limit_reached, info = env.step(
+            obs, reward, found_solution, step_limit_reached, info = env.step(
                 action)
 
-            done = termination_requested or step_limit_reached
+            done = found_solution or step_limit_reached
 
             print(f"state= {info['state']}, reward= {reward}, done= {done}")
 
             env.render()
-            if done:
+            if found_solution:
                 # Note that the VecEnv resets automatically
                 # when a done signal is encountered
                 print(f"\n\tGoal reached! reward= {reward}")
                 break
+            
+            if step_limit_reached:
+                print(f"\n\tBreaking because max steps exceeded.")
+                break
+
