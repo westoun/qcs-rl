@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from quasim.gates.utils import create_matrix, create_controlled_matrix
 import random
 from stable_baselines3 import PPO, A2C, DQN
+from stable_baselines3.common.callbacks import EvalCallback
 from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.results_plotter import plot_results, X_TIMESTEPS
@@ -24,15 +25,18 @@ if __name__ == "__main__":
     random.seed(1)
 
     env = StateSeparatorEnv(qubit_num=QUBIT_NUM, max_steps=MAX_STEPS)
-    env = Monitor(env, "tmp/")
+    env = Monitor(env, "logs/")
+
+    eval_env = StateSeparatorEnv(qubit_num=QUBIT_NUM, max_steps=MAX_STEPS)
+    eval_env = Monitor(eval_env, "logs/eval")
+    eval_callback = EvalCallback(
+        eval_env, log_path="logs/", n_eval_episodes=1_000, eval_freq=30_000, deterministic=True, render=False
+    )
 
     check_env(env)
 
     model = PPO("MlpPolicy", env, verbose=1, seed=1)
-    model.learn(total_timesteps=300_000, log_interval=1000, progress_bar=True)
-
-    plot_results(["tmp/"], None, x_axis=X_TIMESTEPS, task_name="QCS")
-    plt.show()
+    model.learn(total_timesteps=300_000, log_interval=1000, progress_bar=True, callback=eval_callback)
 
     test_count = 5
     for i in range(test_count):
