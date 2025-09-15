@@ -1,6 +1,7 @@
 
 import gymnasium as gym
 from gymnasium import spaces
+import matplotlib.pyplot as plt
 import numpy as np
 from quasim import QuaSim, Circuit, get_unitary
 from quasim.gates import (
@@ -16,6 +17,8 @@ from quasim.gates.utils import create_matrix, create_controlled_matrix
 import random
 from stable_baselines3 import PPO, A2C, DQN
 from stable_baselines3.common.env_checker import check_env
+from stable_baselines3.common.monitor import Monitor
+from stable_baselines3.common.results_plotter import plot_results, X_TIMESTEPS
 import torch
 from typing import List, Union
 
@@ -69,7 +72,7 @@ def compute_reward(state, gate_type, invalid_action, step_limit_reached, gate_hi
         return - 10
 
     if gate_type == TERMINATE:
-        if min_entanglement_entropy(state) == 0:
+        if min_entanglement_entropy(state) == 0:  # is state separable?
             return 1000
         else:
             return -1
@@ -167,11 +170,20 @@ class StateSeparatorEnv(gym.Env):
 
 if __name__ == "__main__":
 
+    log_dir = "tmp/"
+
+    random.seed(1)
+
     env = StateSeparatorEnv(seed=1)
+    env = Monitor(env, "tmp/")
+
     check_env(env)
 
-    model = PPO("MlpPolicy", env, verbose=1, seed=1).learn(
-        20000, log_interval=1000)
+    model = PPO("MlpPolicy", env, verbose=1, seed=1)
+    model.learn(total_timesteps=100_000, log_interval=1000)
+
+    plot_results(["tmp/"], None, x_axis=X_TIMESTEPS, task_name="QCS")
+    plt.show()
 
     test_count = 5
     for i in range(test_count):
