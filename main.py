@@ -30,13 +30,13 @@ if __name__ == "__main__":
     eval_env = StateSeparatorEnv(qubit_num=QUBIT_NUM, max_steps=MAX_STEPS)
     eval_env = Monitor(eval_env, "logs/eval")
     eval_callback = EvalCallback(
-        eval_env, log_path="logs/", n_eval_episodes=1_000, eval_freq=30_000, deterministic=True, render=False
+        eval_env, log_path="logs/", n_eval_episodes=1_000, eval_freq=50_000, deterministic=True, render=False
     )
 
     check_env(env)
 
     model = PPO("MlpPolicy", env, verbose=1, seed=1)
-    model.learn(total_timesteps=300_000, log_interval=1000, progress_bar=True, callback=eval_callback)
+    model.learn(total_timesteps=1_000_000, log_interval=1_000, progress_bar=True, callback=eval_callback)
 
     test_count = 5
     for i in range(test_count):
