@@ -11,6 +11,7 @@ import torch
 from typing import List, Union
 
 from environment import StateSeparatorEnv
+from target_state_generator import TargetStateGenerator
 from utils.circuit import decomplexify_vector, create_random_circuit, update_state
 from utils.metrics import min_entanglement_entropy
 
@@ -20,23 +21,29 @@ MAX_STEPS = 10
 
 if __name__ == "__main__":
 
-    log_dir = "tmp/"
+    state_generator = TargetStateGenerator(
+        qubit_num=2, gate_count=20, max_pool_size=20_000, train_test_split=0.3)
+
+    LOG_DIR = "logs/"
 
     random.seed(1)
 
-    env = StateSeparatorEnv(qubit_num=QUBIT_NUM, max_steps=MAX_STEPS)
-    env = Monitor(env, "logs/")
+    env = StateSeparatorEnv(qubit_num=QUBIT_NUM, max_steps=MAX_STEPS,
+                            state_generator=state_generator, eval=False)
+    env = Monitor(env, LOG_DIR)
 
-    eval_env = StateSeparatorEnv(qubit_num=QUBIT_NUM, max_steps=MAX_STEPS)
-    eval_env = Monitor(eval_env, "logs/eval")
+    eval_env = StateSeparatorEnv(
+        qubit_num=QUBIT_NUM, max_steps=MAX_STEPS, state_generator=state_generator, eval=True)
+    eval_env = Monitor(eval_env, f"{LOG_DIR}eval")
     eval_callback = EvalCallback(
-        eval_env, log_path="logs/", n_eval_episodes=1_000, eval_freq=50_000, deterministic=True, render=False
+        eval_env, log_path=LOG_DIR, n_eval_episodes=1_000, eval_freq=50_000, deterministic=True, render=False
     )
 
     check_env(env)
 
     model = PPO("MlpPolicy", env, verbose=1, seed=1)
-    model.learn(total_timesteps=1_000_000, log_interval=1_000, progress_bar=True, callback=eval_callback)
+    model.learn(total_timesteps=1_000_000, log_interval=1_000,
+                progress_bar=True, callback=eval_callback)
 
     test_count = 5
     for i in range(test_count):

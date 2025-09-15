@@ -23,6 +23,7 @@ from typing import List, Union
 
 from utils.circuit import decomplexify_vector, create_random_circuit, update_state
 from utils.metrics import min_entanglement_entropy
+from target_state_generator import TargetStateGenerator
 
 GATE_TYPE_COUNT = 4  # Clifford gate set
 
@@ -31,16 +32,6 @@ H_GATE = 0
 S_GATE = 1
 T_GATE = 2
 CX_GATE = 3
-
-
-def create_random_state(gate_count: int = 5, qubit_num: int = 2) -> np.ndarray:
-    # TODO: Move to utils.
-    circuit = create_random_circuit(gate_count, qubit_num)
-
-    simulator = QuaSim()
-    simulator.evaluate([circuit])
-
-    return circuit.state
 
 
 def is_valid_action(gate_type: int, target_qubit: int, control_qubit: int) -> bool:
@@ -82,6 +73,9 @@ class StateSeparatorEnv(gym.Env):
     # metadata = {"render_modes": ["console"]}
     render_mode = "console"
 
+    state_generator: TargetStateGenerator
+    eval: bool
+
     qubit_num: int
     max_steps: int
 
@@ -91,8 +85,11 @@ class StateSeparatorEnv(gym.Env):
     state_history: List
     gate_history: List
 
-    def __init__(self, qubit_num: int, max_steps: int):
+    def __init__(self, qubit_num: int, max_steps: int, state_generator: TargetStateGenerator, eval: bool = False):
         super().__init__()
+
+        self.state_generator = state_generator
+        self.eval = eval
 
         self.qubit_num = qubit_num
         self.max_steps = max_steps
@@ -135,14 +132,7 @@ class StateSeparatorEnv(gym.Env):
         if seed is not None:
             random.seed(seed)
 
-        # Start from entangled states to avoid getting stuck in
-        # local optima always proposing none-gate.
-        for _ in range(100):
-            state = create_random_state(
-                gate_count=20, qubit_num=self.qubit_num)
-
-            if min_entanglement_entropy(state) > 0:
-                break
+        state = self.state_generator.get_state(eval=self.eval)
 
         self.state = state
         self.step_count = 0
