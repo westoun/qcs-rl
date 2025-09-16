@@ -129,6 +129,8 @@ class StateSeparatorEnv(gym.Env):
         return observation, reward, found_solution, step_limit_reached, {"state": self.state}
 
     def reset(self, seed=None, options=None):
+        super().reset(seed=seed, options=options)
+
         state = self.state_generator.get_state(eval=self.eval)
 
         self.state = state

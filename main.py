@@ -10,6 +10,7 @@ from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.on_policy_algorithm import OnPolicyAlgorithm
 from stable_baselines3.common.utils import set_random_seed
+import torch
 from typing import List, Union, Tuple
 
 from environment import StateSeparatorEnv
@@ -63,6 +64,8 @@ def run_experiment(
 
     random.seed(seed)
     np_random.seed(seed)
+    torch.manual_seed(seed)
+    torch.use_deterministic_algorithms(True)
     set_random_seed(seed)
 
     state_generator = TargetStateGenerator(
@@ -70,19 +73,21 @@ def run_experiment(
 
     raw_env = StateSeparatorEnv(qubit_num=qubit_num, max_steps=max_steps,
                                 state_generator=state_generator, eval=False)
+    check_env(raw_env)
+
     env = Monitor(raw_env, f"{log_dir}/train_{seed}")
 
     raw_eval_env = StateSeparatorEnv(
         qubit_num=qubit_num, max_steps=max_steps, state_generator=state_generator, eval=True)
+    check_env(raw_eval_env)
+
     eval_env = Monitor(raw_eval_env, f"{log_dir}/test_{seed}")
+
     eval_callback = EvalCallback(
         eval_env, log_path=log_dir, n_eval_episodes=n_eval_episodes, eval_freq=eval_freq, deterministic=True, render=False
     )
 
-    check_env(env)
-    check_env(eval_env)
-
-    model = PPO("MlpPolicy", env, verbose=1, seed=seed)
+    model = PPO("MlpPolicy", env, verbose=1, seed=seed, n_steps=5_000)
     model.learn(total_timesteps=total_timesteps, log_interval=log_interval,
                 progress_bar=True, callback=eval_callback)
 
@@ -125,13 +130,14 @@ if __name__ == "__main__":
 
     model, eval_env = run_experiment(
         qubit_num=2,
-        gate_count=20,
+        gate_count=10,
         max_pool_size=20_000,
         max_steps=10,
-        total_timesteps=100_000,
+        total_timesteps=2_000_000,
+        eval_freq=5_000,
         seed=1,
-        tag="test",
-        log_dir="log3"
+        tag="base",
+        log_dir="logs"
     )
 
     test_model(model, eval_env, max_steps=10)

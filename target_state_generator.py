@@ -20,12 +20,13 @@ from utils.circuit import decomplexify_vector, create_random_circuit, update_sta
 from utils.metrics import min_entanglement_entropy
 
 
-def hash(my_string: str) -> str:
-    # Use custom hash function because built-in method
-    # uses random seed as additional security feature.
-    hash_obj = hashlib.sha256(my_string.encode())
-    hex_hash = hash_obj.hexdigest()
-    return str(hex_hash)
+def create_random_state(qubit_num: int = 2, gate_count: int = 5) -> np.ndarray:
+    circuit = create_random_circuit(gate_count, qubit_num)
+
+    simulator = QuaSim()
+    simulator.evaluate([circuit])
+
+    return circuit.state
 
 
 class TargetStateGenerator:
@@ -57,13 +58,13 @@ class TargetStateGenerator:
         if max_pool_size is None:
             max_pool_size = self.max_pool_size
 
-        pool = []
+        pool: List[np.ndarray] = []
         for _ in range(max_pool_size):
 
             # Start from entangled states to avoid getting stuck in
             # local optima always proposing none-gate.
-            for _ in range(self.max_pool_size):
-                state = self.create_random_state(
+            for _ in range(self.retries_per_circuit):
+                state = create_random_state(
                     qubit_num=qubit_num,
                     gate_count=gate_count)
 
@@ -76,7 +77,14 @@ class TargetStateGenerator:
         unique_pool = []
         added_states = set()
         for state in pool:
-            state_hash = hash(np.array2string(state, precision=3))
+
+            # if a low precision value is chosen, differences arise
+            # when the same setup (same seed values) is run twice
+            # within the same process. I believe, these issues are
+            # due to some non-deterministic aspect of float rounding
+            # in numpy, but don't know for sure.
+            state_hash = hash(np.array2string(
+                state, precision=50, suppress_small=True))
 
             if state_hash in added_states:
                 continue
@@ -89,28 +97,20 @@ class TargetStateGenerator:
         self.train_pool = unique_pool[:train_size]
         self.test_pool = unique_pool[train_size:]
 
-        self._unused_train_pool = self.train_pool[:]
-        self._unused_test_pool = self.test_pool[:]
-
-    def create_random_state(self, qubit_num: int = 2, gate_count: int = 5) -> np.ndarray:
-        circuit = create_random_circuit(gate_count, qubit_num)
-
-        simulator = QuaSim()
-        simulator.evaluate([circuit])
-
-        return circuit.state
+        self._unused_train_pool = self.train_pool.copy()
+        self._unused_test_pool = self.test_pool.copy()
 
     def get_state(self, eval: bool = False) -> np.ndarray:
         if eval:
             if len(self._unused_test_pool) == 0:
-                self._unused_test_pool = self.test_pool[:]
+                self._unused_test_pool = self.test_pool.copy()
 
             target_idx = randint(0, len(self._unused_test_pool) - 1)
             return self._unused_test_pool.pop(target_idx)
 
         else:
             if len(self._unused_train_pool) == 0:
-                self._unused_train_pool = self.train_pool[:]
+                self._unused_train_pool = self.train_pool.copy()
 
             target_idx = randint(0, len(self._unused_train_pool) - 1)
             return self._unused_train_pool.pop(target_idx)
