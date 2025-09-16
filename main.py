@@ -1,58 +1,102 @@
-
-import matplotlib.pyplot as plt
-from quasim.gates.utils import create_matrix, create_controlled_matrix
+from datetime import datetime
+import json
+import numpy as np
+from numpy import random as np_random
+import os
 import random
 from stable_baselines3 import PPO, A2C, DQN
 from stable_baselines3.common.callbacks import EvalCallback
 from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.monitor import Monitor
-from stable_baselines3.common.results_plotter import plot_results, X_TIMESTEPS
-import torch
-from typing import List, Union
+from stable_baselines3.common.on_policy_algorithm import OnPolicyAlgorithm
+from stable_baselines3.common.utils import set_random_seed
+from typing import List, Union, Tuple
 
 from environment import StateSeparatorEnv
 from target_state_generator import TargetStateGenerator
-from utils.circuit import decomplexify_vector, create_random_circuit, update_state
-from utils.metrics import min_entanglement_entropy
 
-QUBIT_NUM = 2
-GATE_TYPE_COUNT = 4  # Clifford gate set
-MAX_STEPS = 10
 
-if __name__ == "__main__":
+def run_experiment(
+        qubit_num: int,
+        gate_count: int,
+        max_pool_size: int,
+        seed: int,
+        max_steps: int,
+        total_timesteps: int,
+        log_dir: str = "logs",
+        train_test_split: float = 0.3,
+        n_eval_episodes: int = 1000,
+        eval_freq: int = 50_000,
+        log_interval: int = 1_000,
+        tag: str = "base"
+) -> Tuple[OnPolicyAlgorithm, StateSeparatorEnv]:
+    # do not include seed value in target path
+    # so that multiple seeds of same setup are
+    # stored in same path.
+    log_dir = f"{log_dir}/{qubit_num}q_{tag}"
+    os.makedirs(log_dir, exist_ok=True)
+
+    config = {
+        "start_time": str(datetime.now()),
+        "common_params": {
+            "qubit_num": qubit_num,
+            "max_steps": max_steps,
+            "seed": seed,
+            "tag": tag,
+        },
+        "state_generator_params": {
+            "gate_count": gate_count,
+            "max_pool_size": max_pool_size,
+            "train_test_split": train_test_split,
+        },
+        "train_params": {
+            "total_timesteps": total_timesteps,
+            "log_interval": log_interval,
+        },
+        "test_env_params": {
+            "n_eval_episodes": n_eval_episodes,
+            "eval_freq": eval_freq,
+        },
+    }
+    with open(f"{log_dir}/config_{seed}.json", "w") as config_file:
+        json.dump(config, config_file)
+
+    random.seed(seed)
+    np_random.seed(seed)
+    set_random_seed(seed)
 
     state_generator = TargetStateGenerator(
-        qubit_num=2, gate_count=20, max_pool_size=20_000, train_test_split=0.3)
+        qubit_num=qubit_num, gate_count=gate_count, max_pool_size=max_pool_size, train_test_split=train_test_split)
 
-    LOG_DIR = "logs/"
+    raw_env = StateSeparatorEnv(qubit_num=qubit_num, max_steps=max_steps,
+                                state_generator=state_generator, eval=False)
+    env = Monitor(raw_env, f"{log_dir}/train_{seed}")
 
-    random.seed(1)
-
-    env = StateSeparatorEnv(qubit_num=QUBIT_NUM, max_steps=MAX_STEPS,
-                            state_generator=state_generator, eval=False)
-    env = Monitor(env, LOG_DIR)
-
-    eval_env = StateSeparatorEnv(
-        qubit_num=QUBIT_NUM, max_steps=MAX_STEPS, state_generator=state_generator, eval=True)
-    eval_env = Monitor(eval_env, f"{LOG_DIR}eval")
+    raw_eval_env = StateSeparatorEnv(
+        qubit_num=qubit_num, max_steps=max_steps, state_generator=state_generator, eval=True)
+    eval_env = Monitor(raw_eval_env, f"{log_dir}/test_{seed}")
     eval_callback = EvalCallback(
-        eval_env, log_path=LOG_DIR, n_eval_episodes=1_000, eval_freq=50_000, deterministic=True, render=False
+        eval_env, log_path=log_dir, n_eval_episodes=n_eval_episodes, eval_freq=eval_freq, deterministic=True, render=False
     )
 
     check_env(env)
+    check_env(eval_env)
 
-    model = PPO("MlpPolicy", env, verbose=1, seed=1)
-    model.learn(total_timesteps=2_000_000, log_interval=1_000,
+    model = PPO("MlpPolicy", env, verbose=1, seed=seed)
+    model.learn(total_timesteps=total_timesteps, log_interval=log_interval,
                 progress_bar=True, callback=eval_callback)
 
-    test_count = 5
-    for i in range(test_count):
-        print(f"\nTest case {i}")
+    return model, raw_eval_env
+
+
+def test_model(model: OnPolicyAlgorithm, env: StateSeparatorEnv, max_steps: int, n: int = 5) -> None:
+    for i in range(n):
+        print(f"\nTest case {i + 1}")
 
         obs, info = env.reset()
         print(f"Target state: {info['state']}")
 
-        for step in range(MAX_STEPS):
+        for step in range(max_steps):
             action, _ = model.predict(obs, deterministic=True)
 
             print(f"\tStep {step + 1}")
@@ -75,3 +119,19 @@ if __name__ == "__main__":
             if step_limit_reached:
                 print(f"\n\tBreaking because max steps exceeded.")
                 break
+
+
+if __name__ == "__main__":
+
+    model, eval_env = run_experiment(
+        qubit_num=2,
+        gate_count=20,
+        max_pool_size=20_000,
+        max_steps=10,
+        total_timesteps=100_000,
+        seed=1,
+        tag="test",
+        log_dir="log3"
+    )
+
+    test_model(model, eval_env, max_steps=10)
