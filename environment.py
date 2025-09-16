@@ -128,7 +128,7 @@ class StateSeparatorEnv(gym.Env):
         found_solution = bool(min_entanglement_entropy(self.state) == 0)
         return observation, reward, found_solution, step_limit_reached, {"state": self.state}
 
-    def reset(self, options=None):
+    def reset(self, seed=None, options=None):
         state = self.state_generator.get_state(eval=self.eval)
 
         self.state = state
