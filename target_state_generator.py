@@ -1,5 +1,5 @@
 
-from copy import copy
+import hashlib
 from math import floor
 import numpy as np
 from random import sample, randint
@@ -18,6 +18,14 @@ from quasim.gates import (
 
 from utils.circuit import decomplexify_vector, create_random_circuit, update_state
 from utils.metrics import min_entanglement_entropy
+
+
+def hash(my_string: str) -> str:
+    # Use custom hash function because built-in method
+    # uses random seed as additional security feature.
+    hash_obj = hashlib.sha256(my_string.encode())
+    hex_hash = hash_obj.hexdigest()
+    return str(hex_hash)
 
 
 class TargetStateGenerator:
