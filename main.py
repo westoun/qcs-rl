@@ -134,7 +134,7 @@ if __name__ == "__main__":
         max_pool_size=20_000,
         max_steps=10,
         total_timesteps=2_000_000,
-        eval_freq=5_000,
+        eval_freq=50_000,
         seed=1,
         tag="base",
         log_dir="logs"
