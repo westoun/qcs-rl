@@ -1,5 +1,5 @@
 import numpy as np
-from random import seed, random, randint
+from random import random, randint
 import torch
 import torch.nn as nn
 from torch.distributions import Categorical
