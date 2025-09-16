@@ -48,10 +48,10 @@ def min_entanglement_entropy(state: np.ndarray) -> float:
         entanglement_entropy = vn_entanglement_entropy(
             density_matrix, indices0=indices0, indices1=incides1)
 
+        if entanglement_entropy < 1e-8:
+            return 0
+
         if entanglement_entropy < current_minimum:
             current_minimum = entanglement_entropy
-
-    if current_minimum < 1e-8:
-        return 0
 
     return current_minimum
