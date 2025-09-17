@@ -1,0 +1,8 @@
+services:
+  rl4statesep:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: python3 main.py
+    volumes:
+      - ./logs:/app/logs

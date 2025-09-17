@@ -16,6 +16,14 @@ from typing import List, Union, Tuple
 from environment import StateSeparatorEnv
 from target_state_generator import TargetStateGenerator
 
+# Show progressbar if experiment is run locally (requirements.txt).
+# Don't show if experiment is run in docker (experiment_requirements.txt).
+try:
+    import tqdm
+    SHOW_PROGRESSBAR = True
+except ImportError:
+    SHOW_PROGRESSBAR = False
+
 
 def run_experiment(
         qubit_num: int,
@@ -94,7 +102,7 @@ def run_experiment(
 
     model = PPO("MlpPolicy", env, verbose=1, seed=seed, n_steps=5_000)
     model.learn(total_timesteps=total_timesteps, log_interval=log_interval,
-                progress_bar=True, callback=eval_callback)
+                progress_bar=SHOW_PROGRESSBAR, callback=eval_callback)
 
     # Write to file at end of function to allow for additional information
     # to be added.
@@ -149,7 +157,7 @@ if __name__ == "__main__":
         tag="base",
         log_dir="logs"
     )
-    
+
     model, eval_env = run_experiment(
         qubit_num=2,
         gate_count=10,
