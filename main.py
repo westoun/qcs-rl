@@ -34,7 +34,7 @@ def run_experiment(
     # do not include seed value in target path
     # so that multiple seeds of same setup are
     # stored in same path.
-    log_dir = f"{log_dir}/{qubit_num}q_{tag}"
+    log_dir = f"{log_dir}/{qubit_num}q_{tag}/{seed}"
     os.makedirs(log_dir, exist_ok=True)
 
     config = {
@@ -59,7 +59,7 @@ def run_experiment(
             "eval_freq": eval_freq,
         },
     }
-    with open(f"{log_dir}/config_{seed}.json", "w") as config_file:
+    with open(f"{log_dir}/config.json", "w") as config_file:
         json.dump(config, config_file)
 
     random.seed(seed)
@@ -75,13 +75,13 @@ def run_experiment(
                                 state_generator=state_generator, eval=False)
     check_env(raw_env)
 
-    env = Monitor(raw_env, f"{log_dir}/train_{seed}")
+    env = Monitor(raw_env, f"{log_dir}/train")
 
     raw_eval_env = StateSeparatorEnv(
         qubit_num=qubit_num, max_steps=max_steps, state_generator=state_generator, eval=True)
     check_env(raw_eval_env)
 
-    eval_env = Monitor(raw_eval_env, f"{log_dir}/test_{seed}")
+    eval_env = Monitor(raw_eval_env, f"{log_dir}/test")
 
     eval_callback = EvalCallback(
         eval_env, log_path=log_dir, n_eval_episodes=n_eval_episodes, eval_freq=eval_freq, deterministic=True, render=False
