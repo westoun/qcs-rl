@@ -20,13 +20,14 @@ from target_state_generator import TargetStateGenerator
 def run_experiment(
         qubit_num: int,
         gate_count: int,
-        max_pool_size: int,
+        targeted_pool_size: int,
         seed: int,
         max_steps: int,
         total_timesteps: int,
         log_dir: str = "logs",
         train_test_split: float = 0.3,
-        n_eval_episodes: int = 1000,
+        max_generation_tries: int = 1_000_000,
+        n_eval_episodes: int = 1_000,
         eval_freq: int = 50_000,
         log_interval: int = 1_000,
         tag: str = "base"
@@ -47,8 +48,9 @@ def run_experiment(
         },
         "state_generator_params": {
             "gate_count": gate_count,
-            "max_pool_size": max_pool_size,
+            "targeted_pool_size": targeted_pool_size,
             "train_test_split": train_test_split,
+            "max_generation_tries": max_generation_tries,
         },
         "train_params": {
             "total_timesteps": total_timesteps,
@@ -59,8 +61,6 @@ def run_experiment(
             "eval_freq": eval_freq,
         },
     }
-    with open(f"{log_dir}/config.json", "w") as config_file:
-        json.dump(config, config_file)
 
     random.seed(seed)
     np_random.seed(seed)
@@ -69,7 +69,12 @@ def run_experiment(
     set_random_seed(seed)
 
     state_generator = TargetStateGenerator(
-        qubit_num=qubit_num, gate_count=gate_count, max_pool_size=max_pool_size, train_test_split=train_test_split)
+        qubit_num=qubit_num, gate_count=gate_count, targeted_pool_size=targeted_pool_size, train_test_split=train_test_split, max_generation_tries=max_generation_tries)
+
+    config["state_generator_params"]["train_pool_size"] = len(
+        state_generator.train_pool)
+    config["state_generator_params"]["test_pool_size"] = len(
+        state_generator.test_pool)
 
     raw_env = StateSeparatorEnv(qubit_num=qubit_num, max_steps=max_steps,
                                 state_generator=state_generator, eval=False)
@@ -90,6 +95,11 @@ def run_experiment(
     model = PPO("MlpPolicy", env, verbose=1, seed=seed, n_steps=5_000)
     model.learn(total_timesteps=total_timesteps, log_interval=log_interval,
                 progress_bar=True, callback=eval_callback)
+
+    # Write to file at end of function to allow for additional information
+    # to be added.
+    with open(f"{log_dir}/config.json", "w") as config_file:
+        json.dump(config, config_file)
 
     return model, raw_eval_env
 
@@ -131,11 +141,23 @@ if __name__ == "__main__":
     model, eval_env = run_experiment(
         qubit_num=2,
         gate_count=10,
-        max_pool_size=20_000,
         max_steps=10,
+        targeted_pool_size=10_000,
         total_timesteps=2_000_000,
         eval_freq=50_000,
         seed=1,
+        tag="base",
+        log_dir="logs"
+    )
+    
+    model, eval_env = run_experiment(
+        qubit_num=2,
+        gate_count=10,
+        max_steps=10,
+        targeted_pool_size=10_000,
+        total_timesteps=2_000_000,
+        eval_freq=50_000,
+        seed=2,
         tag="base",
         log_dir="logs"
     )

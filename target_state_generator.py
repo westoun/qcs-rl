@@ -33,8 +33,8 @@ class TargetStateGenerator:
     qubit_num: int
     gate_count: int
     train_test_split: float
-    retries_per_circuit: int
-    max_pool_size: int
+    targeted_pool_size: int
+    max_generation_tries: int
 
     train_pool: List
     test_pool: List
@@ -44,39 +44,34 @@ class TargetStateGenerator:
     _unused_train_pool: List
     _unused_test_pool: List
 
-    def __init__(self, qubit_num: int, gate_count: int, max_pool_size: int, train_test_split: float = 0.3, retries_per_circuit: int = 100):
+    def __init__(self, qubit_num: int, gate_count: int, targeted_pool_size: int, train_test_split: float = 0.3, max_generation_tries: int = 1_000_000):
+        assert targeted_pool_size <= max_generation_tries
+
         self.qubit_num = qubit_num
         self.gate_count = gate_count
         self.train_test_split = train_test_split
-        self.retries_per_circuit = retries_per_circuit
-        self.max_pool_size = max_pool_size
+        self.targeted_pool_size = targeted_pool_size
+        self.max_generation_tries = max_generation_tries
 
         self.build_pool(qubit_num=qubit_num, gate_count=gate_count,
-                        max_pool_size=max_pool_size)
+                        targeted_pool_size=targeted_pool_size)
 
-    def build_pool(self, qubit_num: int, gate_count: int, max_pool_size: int = None) -> None:
-        if max_pool_size is None:
-            max_pool_size = self.max_pool_size
+    def build_pool(self, qubit_num: int, gate_count: int, targeted_pool_size: int = None, max_generation_tries: int = None) -> None:
+        if targeted_pool_size is None:
+            targeted_pool_size = self.targeted_pool_size
+
+        if max_generation_tries is None:
+            max_generation_tries = self.max_generation_tries
 
         pool: List[np.ndarray] = []
-        for _ in range(max_pool_size):
+        processed_states = set()
+        for _ in range(max_generation_tries):
+            if len(pool) >= targeted_pool_size:
+                break
 
-            # Start from entangled states to avoid getting stuck in
-            # local optima always proposing none-gate.
-            for _ in range(self.retries_per_circuit):
-                state = create_random_state(
-                    qubit_num=qubit_num,
-                    gate_count=gate_count)
-
-                if min_entanglement_entropy(state) > 0:
-                    break
-
-            pool.append(state)
-
-        # remove duplicates
-        unique_pool = []
-        added_states = set()
-        for state in pool:
+            state = create_random_state(
+                qubit_num=qubit_num,
+                gate_count=gate_count)
 
             # if a low precision value is chosen, differences arise
             # when the same setup (same seed values) is run twice
@@ -84,18 +79,24 @@ class TargetStateGenerator:
             # due to some non-deterministic aspect of float rounding
             # in numpy, but don't know for sure.
             state_hash = hash(np.array2string(
-                state, precision=50, suppress_small=True))
+                state, precision=64, suppress_small=True))
 
-            if state_hash in added_states:
+            if state_hash in processed_states:
                 continue
 
-            unique_pool.append(state)
-            added_states.add(state_hash)
+            processed_states.add(state_hash)
 
-        train_size = floor(len(unique_pool) * (1 - self.train_test_split))
+            # Start from entangled states to avoid getting stuck in
+            # local optima always proposing none-gate.
+            if min_entanglement_entropy(state) == 0:
+                continue
 
-        self.train_pool = unique_pool[:train_size]
-        self.test_pool = unique_pool[train_size:]
+            pool.append(state)
+
+        train_size = floor(len(pool) * (1 - self.train_test_split))
+
+        self.train_pool = pool[:train_size]
+        self.test_pool = pool[train_size:]
 
         self._unused_train_pool = self.train_pool.copy()
         self._unused_test_pool = self.test_pool.copy()
