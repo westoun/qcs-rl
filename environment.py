@@ -70,9 +70,6 @@ def compute_reward(state, gate_type, invalid_action, step_limit_reached, gate_hi
 
 
 class StateSeparatorEnv(gym.Env):
-    # metadata = {"render_modes": ["console"]}
-    render_mode = "console"
-
     state_generator: TargetStateGenerator
     eval: bool
 
@@ -142,12 +139,7 @@ class StateSeparatorEnv(gym.Env):
         return observation, {"state": self.state}
 
     def render(self):
-        if self.render_mode == "console":
-            # TODO: Figure out what to put here.
-            pass
-        else:
-            raise NotImplementedError(
-                f"Render mode '{self.render_mode}' has no implementation specified.")
+        pass 
 
     def close(self):
         pass
