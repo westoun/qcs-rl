@@ -26,6 +26,9 @@ try:
 except ImportError:
     SHOW_PROGRESSBAR = False
 
+def save_to_json(obj, path: str) -> None:
+    with open(path, "w") as config_file:
+        json.dump(obj, config_file)
 
 def run_experiment(
         qubit_num: int,
@@ -47,6 +50,8 @@ def run_experiment(
     # stored in same path.
     log_dir = f"{log_dir}/{qubit_num}q_{gate_count}g_{tag}/{seed}"
     os.makedirs(log_dir, exist_ok=True)
+
+    config_target_path = f"{log_dir}/config.json"
 
     config = {
         "start_time": str(datetime.now()),
@@ -86,9 +91,6 @@ def run_experiment(
     config["state_generator_params"]["test_pool_size"] = len(
         state_generator.test_pool)
 
-    with open(f"{log_dir}/config.json", "w") as config_file:
-        json.dump(config, config_file)
-
     raw_env = StateSeparatorEnv(qubit_num=qubit_num, max_steps=max_steps,
                                 state_generator=state_generator, eval=False)
     check_env(raw_env)
@@ -106,8 +108,15 @@ def run_experiment(
     )
 
     model = PPO("MlpPolicy", env, verbose=1, seed=seed, n_steps=5_000)
+
+    config["common_params"]["model"] = str(model.policy)
+    
+    save_to_json(config, config_target_path)
+
     model.learn(total_timesteps=total_timesteps, log_interval=log_interval,
                 progress_bar=SHOW_PROGRESSBAR, callback=eval_callback)
+
+    model.save(f"{log_dir}/model.zip")
 
     return model, raw_eval_env
 
@@ -146,6 +155,44 @@ def test_model(model: OnPolicyAlgorithm, env: StateSeparatorEnv, max_steps: int,
 
 if __name__ == "__main__":
 
+    # 2 qubits, 10 gates
+
+    model, eval_env = run_experiment(
+        qubit_num=2,
+        gate_count=10,
+        max_steps=10,
+        targeted_pool_size=10_000,
+        total_timesteps=10_000_000,
+        eval_freq=50_000,
+        seed=1,
+        tag="base",
+        log_dir="logs"
+    )
+
+    model, eval_env = run_experiment(
+        qubit_num=2,
+        gate_count=10,
+        max_steps=10,
+        targeted_pool_size=10_000,
+        total_timesteps=10_000_000,
+        eval_freq=50_000,
+        seed=2,
+        tag="base",
+        log_dir="logs"
+    )
+
+    model, eval_env = run_experiment(
+        qubit_num=2,
+        gate_count=10,
+        max_steps=10,
+        targeted_pool_size=10_000,
+        total_timesteps=10_000_000,
+        eval_freq=50_000,
+        seed=3,
+        tag="base",
+        log_dir="logs"
+    )
+
     # 2 qubits, 15 gates
 
     model, eval_env = run_experiment(
@@ -153,7 +200,7 @@ if __name__ == "__main__":
         gate_count=15,
         max_steps=15,
         targeted_pool_size=10_000,
-        total_timesteps=5_000_000,
+        total_timesteps=10_000_000,
         eval_freq=50_000,
         seed=1,
         tag="base",
@@ -165,7 +212,7 @@ if __name__ == "__main__":
         gate_count=15,
         max_steps=15,
         targeted_pool_size=10_000,
-        total_timesteps=5_000_000,
+        total_timesteps=10_000_000,
         eval_freq=50_000,
         seed=2,
         tag="base",
@@ -177,7 +224,7 @@ if __name__ == "__main__":
         gate_count=15,
         max_steps=15,
         targeted_pool_size=10_000,
-        total_timesteps=5_000_000,
+        total_timesteps=10_000_000,
         eval_freq=50_000,
         seed=3,
         tag="base",
@@ -191,7 +238,7 @@ if __name__ == "__main__":
         gate_count=20,
         max_steps=20,
         targeted_pool_size=10_000,
-        total_timesteps=5_000_000,
+        total_timesteps=10_000_000,
         eval_freq=50_000,
         seed=1,
         tag="base",
@@ -203,7 +250,7 @@ if __name__ == "__main__":
         gate_count=20,
         max_steps=20,
         targeted_pool_size=10_000,
-        total_timesteps=5_000_000,
+        total_timesteps=10_000_000,
         eval_freq=50_000,
         seed=2,
         tag="base",
@@ -215,7 +262,7 @@ if __name__ == "__main__":
         gate_count=20,
         max_steps=20,
         targeted_pool_size=10_000,
-        total_timesteps=5_000_000,
+        total_timesteps=10_000_000,
         eval_freq=50_000,
         seed=3,
         tag="base",
@@ -229,7 +276,7 @@ if __name__ == "__main__":
         gate_count=25,
         max_steps=25,
         targeted_pool_size=10_000,
-        total_timesteps=5_000_000,
+        total_timesteps=10_000_000,
         eval_freq=50_000,
         seed=1,
         tag="base",
@@ -241,7 +288,7 @@ if __name__ == "__main__":
         gate_count=25,
         max_steps=25,
         targeted_pool_size=10_000,
-        total_timesteps=5_000_000,
+        total_timesteps=10_000_000,
         eval_freq=50_000,
         seed=2,
         tag="base",
@@ -253,7 +300,45 @@ if __name__ == "__main__":
         gate_count=25,
         max_steps=25,
         targeted_pool_size=10_000,
-        total_timesteps=5_000_000,
+        total_timesteps=10_000_000,
+        eval_freq=50_000,
+        seed=3,
+        tag="base",
+        log_dir="logs"
+    )
+
+    # 3 qubits, 10 gates
+
+    model, eval_env = run_experiment(
+        qubit_num=3,
+        gate_count=10,
+        max_steps=10,
+        targeted_pool_size=10_000,
+        total_timesteps=10_000_000,
+        eval_freq=50_000,
+        seed=1,
+        tag="base",
+        log_dir="logs"
+    )
+
+    model, eval_env = run_experiment(
+        qubit_num=3,
+        gate_count=10,
+        max_steps=10,
+        targeted_pool_size=10_000,
+        total_timesteps=10_000_000,
+        eval_freq=50_000,
+        seed=2,
+        tag="base",
+        log_dir="logs"
+    )
+
+    model, eval_env = run_experiment(
+        qubit_num=3,
+        gate_count=10,
+        max_steps=10,
+        targeted_pool_size=10_000,
+        total_timesteps=10_000_000,
         eval_freq=50_000,
         seed=3,
         tag="base",
@@ -267,7 +352,7 @@ if __name__ == "__main__":
         gate_count=15,
         max_steps=15,
         targeted_pool_size=10_000,
-        total_timesteps=5_000_000,
+        total_timesteps=10_000_000,
         eval_freq=50_000,
         seed=1,
         tag="base",
@@ -279,7 +364,7 @@ if __name__ == "__main__":
         gate_count=15,
         max_steps=15,
         targeted_pool_size=10_000,
-        total_timesteps=5_000_000,
+        total_timesteps=10_000_000,
         eval_freq=50_000,
         seed=2,
         tag="base",
@@ -291,7 +376,7 @@ if __name__ == "__main__":
         gate_count=15,
         max_steps=15,
         targeted_pool_size=10_000,
-        total_timesteps=5_000_000,
+        total_timesteps=10_000_000,
         eval_freq=50_000,
         seed=3,
         tag="base",
@@ -305,7 +390,7 @@ if __name__ == "__main__":
         gate_count=20,
         max_steps=20,
         targeted_pool_size=10_000,
-        total_timesteps=5_000_000,
+        total_timesteps=10_000_000,
         eval_freq=50_000,
         seed=1,
         tag="base",
@@ -317,7 +402,7 @@ if __name__ == "__main__":
         gate_count=20,
         max_steps=20,
         targeted_pool_size=10_000,
-        total_timesteps=5_000_000,
+        total_timesteps=10_000_000,
         eval_freq=50_000,
         seed=2,
         tag="base",
@@ -329,7 +414,7 @@ if __name__ == "__main__":
         gate_count=20,
         max_steps=20,
         targeted_pool_size=10_000,
-        total_timesteps=5_000_000,
+        total_timesteps=10_000_000,
         eval_freq=50_000,
         seed=3,
         tag="base",
@@ -343,7 +428,7 @@ if __name__ == "__main__":
         gate_count=25,
         max_steps=25,
         targeted_pool_size=10_000,
-        total_timesteps=5_000_000,
+        total_timesteps=10_000_000,
         eval_freq=50_000,
         seed=1,
         tag="base",
@@ -355,7 +440,7 @@ if __name__ == "__main__":
         gate_count=25,
         max_steps=25,
         targeted_pool_size=10_000,
-        total_timesteps=5_000_000,
+        total_timesteps=10_000_000,
         eval_freq=50_000,
         seed=2,
         tag="base",
@@ -367,7 +452,7 @@ if __name__ == "__main__":
         gate_count=25,
         max_steps=25,
         targeted_pool_size=10_000,
-        total_timesteps=5_000_000,
+        total_timesteps=10_000_000,
         eval_freq=50_000,
         seed=3,
         tag="base",
@@ -382,7 +467,7 @@ if __name__ == "__main__":
         max_steps=10,
         targeted_pool_size=10_000,
         max_generation_tries=10_000_000,
-        total_timesteps=5_000_000,
+        total_timesteps=10_000_000,
         eval_freq=50_000,
         seed=1,
         tag="base",
@@ -395,7 +480,7 @@ if __name__ == "__main__":
         max_steps=10,
         targeted_pool_size=10_000,
         max_generation_tries=10_000_000,
-        total_timesteps=5_000_000,
+        total_timesteps=10_000_000,
         eval_freq=50_000,
         seed=2,
         tag="base",
@@ -408,7 +493,7 @@ if __name__ == "__main__":
         max_steps=10,
         targeted_pool_size=10_000,
         max_generation_tries=10_000_000,
-        total_timesteps=5_000_000,
+        total_timesteps=10_000_000,
         eval_freq=50_000,
         seed=3,
         tag="base",
@@ -423,7 +508,7 @@ if __name__ == "__main__":
         max_steps=15,
         targeted_pool_size=10_000,
         max_generation_tries=10_000_000,
-        total_timesteps=5_000_000,
+        total_timesteps=10_000_000,
         eval_freq=50_000,
         seed=1,
         tag="base",
@@ -436,7 +521,7 @@ if __name__ == "__main__":
         max_steps=15,
         targeted_pool_size=10_000,
         max_generation_tries=10_000_000,
-        total_timesteps=5_000_000,
+        total_timesteps=10_000_000,
         eval_freq=50_000,
         seed=2,
         tag="base",
@@ -449,7 +534,7 @@ if __name__ == "__main__":
         max_steps=15,
         targeted_pool_size=10_000,
         max_generation_tries=10_000_000,
-        total_timesteps=5_000_000,
+        total_timesteps=10_000_000,
         eval_freq=50_000,
         seed=3,
         tag="base",
@@ -464,7 +549,7 @@ if __name__ == "__main__":
         max_steps=20,
         targeted_pool_size=10_000,
         max_generation_tries=10_000_000,
-        total_timesteps=5_000_000,
+        total_timesteps=10_000_000,
         eval_freq=50_000,
         seed=1,
         tag="base",
@@ -477,7 +562,7 @@ if __name__ == "__main__":
         max_steps=20,
         targeted_pool_size=10_000,
         max_generation_tries=10_000_000,
-        total_timesteps=5_000_000,
+        total_timesteps=10_000_000,
         eval_freq=50_000,
         seed=2,
         tag="base",
@@ -490,7 +575,7 @@ if __name__ == "__main__":
         max_steps=20,
         targeted_pool_size=10_000,
         max_generation_tries=10_000_000,
-        total_timesteps=5_000_000,
+        total_timesteps=10_000_000,
         eval_freq=50_000,
         seed=3,
         tag="base",
@@ -505,7 +590,7 @@ if __name__ == "__main__":
         max_steps=25,
         targeted_pool_size=10_000,
         max_generation_tries=10_000_000,
-        total_timesteps=5_000_000,
+        total_timesteps=10_000_000,
         eval_freq=50_000,
         seed=1,
         tag="base",
@@ -518,7 +603,7 @@ if __name__ == "__main__":
         max_steps=25,
         targeted_pool_size=10_000,
         max_generation_tries=10_000_000,
-        total_timesteps=5_000_000,
+        total_timesteps=10_000_000,
         eval_freq=50_000,
         seed=2,
         tag="base",
@@ -531,7 +616,7 @@ if __name__ == "__main__":
         max_steps=25,
         targeted_pool_size=10_000,
         max_generation_tries=10_000_000,
-        total_timesteps=5_000_000,
+        total_timesteps=10_000_000,
         eval_freq=50_000,
         seed=3,
         tag="base",
