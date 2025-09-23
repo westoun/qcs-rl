@@ -129,6 +129,10 @@ def run_experiment(
     model.learn(total_timesteps=total_timesteps, log_interval=log_interval,
                 progress_bar=SHOW_PROGRESSBAR, callback=eval_callback)
 
+    # Log how often gate count was incremented to determine final result.
+    if curriculum_learning is True:
+        config["curriculum_learning_params"]["final_gate_count"] = state_generator.gate_count
+
     model.save(f"{log_dir}/model.zip")
 
     return model, raw_eval_env
@@ -320,6 +324,53 @@ if __name__ == "__main__":
         log_dir="logs"
     )
 
+    # 2 qubits, curriculum learning
+
+    model, eval_env = run_experiment(
+        qubit_num=2,
+        gate_count=10,
+        max_steps=10,
+        targeted_pool_size=10_000,
+        total_timesteps=10_000_000,
+        eval_freq=50_000,
+        seed=1,
+        tag="curriculum_learning",
+        log_dir="logs",
+        curriculum_learning=True,
+        cl_succ_pct_threshold=0.8,
+        cl_max_gate_count=25
+    )
+
+    model, eval_env = run_experiment(
+        qubit_num=2,
+        gate_count=10,
+        max_steps=10,
+        targeted_pool_size=10_000,
+        total_timesteps=10_000_000,
+        eval_freq=50_000,
+        seed=2,
+        tag="curriculum_learning",
+        log_dir="logs",
+        curriculum_learning=True,
+        cl_succ_pct_threshold=0.8,
+        cl_max_gate_count=25
+    )
+
+    model, eval_env = run_experiment(
+        qubit_num=2,
+        gate_count=10,
+        max_steps=10,
+        targeted_pool_size=10_000,
+        total_timesteps=10_000_000,
+        eval_freq=50_000,
+        seed=3,
+        tag="curriculum_learning",
+        log_dir="logs",
+        curriculum_learning=True,
+        cl_succ_pct_threshold=0.8,
+        cl_max_gate_count=25
+    )
+
     # 3 qubits, 10 gates
 
     model, eval_env = run_experiment(
@@ -470,6 +521,56 @@ if __name__ == "__main__":
         seed=3,
         tag="base",
         log_dir="logs"
+    )
+
+    # 3 qubits, curriculum learning
+
+    model, eval_env = run_experiment(
+        qubit_num=3,
+        gate_count=10,
+        max_steps=10,
+        targeted_pool_size=10_000,
+        max_generation_tries=10_000_000,
+        total_timesteps=10_000_000,
+        eval_freq=50_000,
+        seed=1,
+        tag="curriculum_learning",
+        log_dir="logs",
+        curriculum_learning=True,
+        cl_succ_pct_threshold=0.8,
+        cl_max_gate_count=25
+    )
+
+    model, eval_env = run_experiment(
+        qubit_num=3,
+        gate_count=10,
+        max_steps=10,
+        targeted_pool_size=10_000,
+        max_generation_tries=10_000_000,
+        total_timesteps=10_000_000,
+        eval_freq=50_000,
+        seed=2,
+        tag="curriculum_learning",
+        log_dir="logs",
+        curriculum_learning=True,
+        cl_succ_pct_threshold=0.8,
+        cl_max_gate_count=25
+    )
+
+    model, eval_env = run_experiment(
+        qubit_num=3,
+        gate_count=10,
+        max_steps=10,
+        targeted_pool_size=10_000,
+        max_generation_tries=10_000_000,
+        total_timesteps=10_000_000,
+        eval_freq=50_000,
+        seed=3,
+        tag="curriculum_learning",
+        log_dir="logs",
+        curriculum_learning=True,
+        cl_succ_pct_threshold=0.8,
+        cl_max_gate_count=25
     )
 
     # 4 qubits, 10 gates
@@ -634,6 +735,56 @@ if __name__ == "__main__":
         seed=3,
         tag="base",
         log_dir="logs"
+    )
+
+    # 4 qubits, curriculum learning
+
+    model, eval_env = run_experiment(
+        qubit_num=4,
+        gate_count=10,
+        max_steps=10,
+        targeted_pool_size=10_000,
+        max_generation_tries=10_000_000,
+        total_timesteps=10_000_000,
+        eval_freq=50_000,
+        seed=1,
+        tag="curriculum_learning",
+        log_dir="logs",
+        curriculum_learning=True,
+        cl_succ_pct_threshold=0.8,
+        cl_max_gate_count=25
+    )
+
+    model, eval_env = run_experiment(
+        qubit_num=4,
+        gate_count=10,
+        max_steps=10,
+        targeted_pool_size=10_000,
+        max_generation_tries=10_000_000,
+        total_timesteps=10_000_000,
+        eval_freq=50_000,
+        seed=2,
+        tag="curriculum_learning",
+        log_dir="logs",
+        curriculum_learning=True,
+        cl_succ_pct_threshold=0.8,
+        cl_max_gate_count=25
+    )
+
+    model, eval_env = run_experiment(
+        qubit_num=4,
+        gate_count=10,
+        max_steps=10,
+        targeted_pool_size=10_000,
+        max_generation_tries=10_000_000,
+        total_timesteps=10_000_000,
+        eval_freq=50_000,
+        seed=3,
+        tag="curriculum_learning",
+        log_dir="logs",
+        curriculum_learning=True,
+        cl_succ_pct_threshold=0.8,
+        cl_max_gate_count=25
     )
 
     # test_model(model, eval_env, max_steps=10)
