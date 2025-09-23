@@ -21,9 +21,9 @@ from stable_baselines3.common.results_plotter import plot_results, X_TIMESTEPS
 import torch
 from typing import List, Dict
 
-from utils.circuit import decomplexify_vector, create_random_circuit, update_state
-from utils.metrics import min_entanglement_entropy
-from target_state_generator import TargetStateGenerator
+from core.utils.circuit import decomplexify_vector, create_random_circuit, update_state
+from core.utils.metrics import min_entanglement_entropy
+from core.state_generator import TargetStateGenerator
 
 GATE_TYPE_COUNT = 4  # Clifford gate set
 

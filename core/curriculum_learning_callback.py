@@ -4,8 +4,8 @@ import pandas as pd
 from stable_baselines3.common.callbacks import EvalCallback, BaseCallback
 from typing import List, Dict
 
-from environment import StateSeparatorEnv
-from target_state_generator import TargetStateGenerator
+from core.environment import StateSeparatorEnv
+from core.state_generator import TargetStateGenerator
 
 
 class CurriculumLearningCallback(BaseCallback):

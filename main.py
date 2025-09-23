@@ -14,9 +14,9 @@ from stable_baselines3.common.utils import set_random_seed
 import torch
 from typing import List, Union, Tuple
 
-from environment import StateSeparatorEnv
-from target_state_generator import TargetStateGenerator
-from curriculum_learning_callback import CurriculumLearningCallback
+from core.environment import StateSeparatorEnv
+from core.state_generator import TargetStateGenerator
+from core.curriculum_learning_callback import CurriculumLearningCallback
 
 # Show progressbar if experiment is run locally (requirements.txt).
 # Don't show if experiment is run in docker (experiment_requirements.txt).
