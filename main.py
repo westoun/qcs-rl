@@ -7,7 +7,7 @@ from numpy import random as np_random
 import os
 import random
 from stable_baselines3 import PPO, A2C, DQN
-from stable_baselines3.common.callbacks import EvalCallback
+from stable_baselines3.common.callbacks import EvalCallback, BaseCallback
 from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.on_policy_algorithm import OnPolicyAlgorithm
@@ -17,6 +17,7 @@ from typing import List, Union, Tuple
 
 from environment import StateSeparatorEnv
 from target_state_generator import TargetStateGenerator
+from curriculum_learning_callback import CurriculumLearningCallback
 
 # Show progressbar if experiment is run locally (requirements.txt).
 # Don't show if experiment is run in docker (experiment_requirements.txt).
@@ -26,9 +27,11 @@ try:
 except ImportError:
     SHOW_PROGRESSBAR = False
 
+
 def save_to_json(obj, path: str) -> None:
     with open(path, "w") as config_file:
         json.dump(obj, config_file)
+
 
 def run_experiment(
         qubit_num: int,
@@ -43,7 +46,8 @@ def run_experiment(
         n_eval_episodes: int = 1_000,
         eval_freq: int = 50_000,
         log_interval: int = 1_000,
-        tag: str = "base"
+        tag: str = "base",
+        curriculum_learning: bool = False
 ) -> Tuple[OnPolicyAlgorithm, StateSeparatorEnv]:
     # do not include seed value in target path
     # so that multiple seeds of same setup are
@@ -60,6 +64,7 @@ def run_experiment(
             "max_steps": max_steps,
             "seed": seed,
             "tag": tag,
+            "curriculum_learning": curriculum_learning
         },
         "state_generator_params": {
             "gate_count": gate_count,
@@ -103,14 +108,24 @@ def run_experiment(
 
     eval_env = Monitor(raw_eval_env, f"{log_dir}/test")
 
+    if curriculum_learning is True:
+        callback_after_eval = CurriculumLearningCallback(
+            log_path=f"{log_dir}/test.monitor.csv", state_generator=state_generator,
+            envs=[
+                raw_env, raw_eval_env], n_eval_episodes=n_eval_episodes, succ_pct_threshold=0.8,
+            max_gate_count=25
+        )
+    else:
+        callback_after_eval = None
+
     eval_callback = EvalCallback(
-        eval_env, log_path=log_dir, n_eval_episodes=n_eval_episodes, eval_freq=eval_freq, deterministic=True, render=False
+        eval_env, log_path=log_dir, n_eval_episodes=n_eval_episodes, eval_freq=eval_freq, deterministic=True, render=False, callback_after_eval=callback_after_eval
     )
 
     model = PPO("MlpPolicy", env, verbose=1, seed=seed, n_steps=5_000)
 
     config["common_params"]["model"] = str(model.policy)
-    
+
     save_to_json(config, config_target_path)
 
     model.learn(total_timesteps=total_timesteps, log_interval=log_interval,
@@ -230,7 +245,7 @@ if __name__ == "__main__":
         tag="base",
         log_dir="logs"
     )
-    
+
     # 2 qubits, 20 gates
 
     model, eval_env = run_experiment(
@@ -268,7 +283,7 @@ if __name__ == "__main__":
         tag="base",
         log_dir="logs"
     )
-    
+
     # 2 qubits, 25 gates
 
     model, eval_env = run_experiment(
@@ -420,7 +435,7 @@ if __name__ == "__main__":
         tag="base",
         log_dir="logs"
     )
-    
+
     # 3 qubits, 25 gates
 
     model, eval_env = run_experiment(
@@ -540,7 +555,7 @@ if __name__ == "__main__":
         tag="base",
         log_dir="logs"
     )
-    
+
     # 4 qubits, 20 gates
 
     model, eval_env = run_experiment(
@@ -581,7 +596,7 @@ if __name__ == "__main__":
         tag="base",
         log_dir="logs"
     )
-    
+
     # 4 qubits, 25 gates
 
     model, eval_env = run_experiment(
