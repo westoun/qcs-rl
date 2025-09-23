@@ -46,7 +46,9 @@ def run_experiment(
         eval_freq: int = 50_000,
         log_interval: int = 1_000,
         tag: str = "base",
-        curriculum_learning: bool = False
+        curriculum_learning: bool = False,
+        cl_succ_pct_threshold=0.8,
+        cl_max_gate_count=25
 ) -> Tuple[OnPolicyAlgorithm, StateSeparatorEnv]:
     # do not include seed value in target path
     # so that multiple seeds of same setup are
@@ -107,8 +109,8 @@ def run_experiment(
         callback_after_eval = CurriculumLearningCallback(
             log_path=f"{log_dir}/test.monitor.csv", state_generator=state_generator,
             envs=[
-                raw_env, raw_eval_env], n_eval_episodes=n_eval_episodes, succ_pct_threshold=0.8,
-            max_gate_count=25
+                raw_env, raw_eval_env], n_eval_episodes=n_eval_episodes, succ_pct_threshold=cl_succ_pct_threshold,
+            max_gate_count=cl_max_gate_count
         )
         config["curriculum_learning_params"] = callback_after_eval.params
     else:
