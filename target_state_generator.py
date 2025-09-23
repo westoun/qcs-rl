@@ -53,25 +53,18 @@ class TargetStateGenerator:
         self.targeted_pool_size = targeted_pool_size
         self.max_generation_tries = max_generation_tries
 
-        self.build_pool(qubit_num=qubit_num, gate_count=gate_count,
-                        targeted_pool_size=targeted_pool_size)
+        self.build_pool()
 
-    def build_pool(self, qubit_num: int, gate_count: int, targeted_pool_size: int = None, max_generation_tries: int = None) -> None:
-        if targeted_pool_size is None:
-            targeted_pool_size = self.targeted_pool_size
-
-        if max_generation_tries is None:
-            max_generation_tries = self.max_generation_tries
-
+    def build_pool(self) -> None:
         pool: List[np.ndarray] = []
         processed_states = set()
-        for _ in range(max_generation_tries):
-            if len(pool) >= targeted_pool_size:
+        for _ in range(self.max_generation_tries):
+            if len(pool) >= self.targeted_pool_size:
                 break
 
             state = create_random_state(
-                qubit_num=qubit_num,
-                gate_count=gate_count)
+                qubit_num=self.qubit_num,
+                gate_count=self.gate_count)
 
             # if a low precision value is chosen, differences arise
             # when the same setup (same seed values) is run twice
