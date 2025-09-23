@@ -55,6 +55,9 @@ def get_gate(gate_type: int, target_qubit: int, control_qubit: int) -> IGate:
 
 
 def compute_reward(state, gate_type, invalid_action, step_limit_reached, gate_history, state_history) -> float:
+    # Whenever this function changes, make sure to check the cutoff values used for 
+    # success computation in evaluation.ipynb and curriculum learning callback.
+    
     if invalid_action:
         return - 20
 

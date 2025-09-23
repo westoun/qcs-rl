@@ -51,7 +51,8 @@ class CurriculumLearningCallback(BaseCallback):
         assert len(monitor_df) % self.n_eval_episodes == 0
 
         last_eval_df = monitor_df[-self.n_eval_episodes:]
-        last_eval_succ_df = last_eval_df[last_eval_df["l"] < self.envs[0].max_steps
-                                         ]
+
+        # success cutoff is based on reward function.
+        last_eval_succ_df = last_eval_df[last_eval_df["r"] > 0]
 
         return len(last_eval_succ_df) / len(last_eval_df)
