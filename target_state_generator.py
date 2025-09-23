@@ -3,7 +3,7 @@ import hashlib
 from math import floor
 import numpy as np
 from random import sample, randint
-from typing import Set, List
+from typing import Set, List, Dict
 
 from quasim import QuaSim, Circuit, get_unitary
 from quasim.gates import (
@@ -108,3 +108,15 @@ class TargetStateGenerator:
 
             target_idx = randint(0, len(self._unused_train_pool) - 1)
             return self._unused_train_pool.pop(target_idx)
+
+    @property
+    def params(self) -> Dict:
+        return {
+            "qubit_num": self.qubit_num,
+            "gate_count": self.gate_count,
+            "train_test_split": self.train_test_split,
+            "targeted_pool_size": self.targeted_pool_size,
+            "max_generation_tries": self.max_generation_tries,
+            "train_pool_size": len(self.train_pool),
+            "test_pool_size": len(self.test_pool)
+        }

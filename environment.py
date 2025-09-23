@@ -19,7 +19,7 @@ from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.results_plotter import plot_results, X_TIMESTEPS
 import torch
-from typing import List, Union
+from typing import List, Dict
 
 from utils.circuit import decomplexify_vector, create_random_circuit, update_state
 from utils.metrics import min_entanglement_entropy
@@ -55,9 +55,9 @@ def get_gate(gate_type: int, target_qubit: int, control_qubit: int) -> IGate:
 
 
 def compute_reward(state, gate_type, invalid_action, step_limit_reached, gate_history, state_history) -> float:
-    # Whenever this function changes, make sure to check the cutoff values used for 
+    # Whenever this function changes, make sure to check the cutoff values used for
     # success computation in evaluation.ipynb and curriculum learning callback.
-    
+
     if invalid_action:
         return - 20
 
@@ -142,7 +142,15 @@ class StateSeparatorEnv(gym.Env):
         return observation, {"state": self.state}
 
     def render(self):
-        pass 
+        pass
 
     def close(self):
         pass
+
+    @property
+    def params(self) -> Dict:
+        return {
+            "qubit_num": self.qubit_num,
+            "max_steps": self.max_steps,
+            "eval": self.eval
+        }

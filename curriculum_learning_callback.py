@@ -2,7 +2,7 @@
 
 import pandas as pd
 from stable_baselines3.common.callbacks import EvalCallback, BaseCallback
-from typing import List
+from typing import List, Dict
 
 from environment import StateSeparatorEnv
 from target_state_generator import TargetStateGenerator
@@ -56,3 +56,12 @@ class CurriculumLearningCallback(BaseCallback):
         last_eval_succ_df = last_eval_df[last_eval_df["r"] > 0]
 
         return len(last_eval_succ_df) / len(last_eval_df)
+
+    @property
+    def params(self) -> Dict:
+        return {
+            "log_path": self.log_path,
+            "n_eval_episodes": self.n_eval_episodes,
+            "succ_pct_threshold": self.succ_pct_threshold,
+            "max_gate_count": self.max_gate_count
+        }

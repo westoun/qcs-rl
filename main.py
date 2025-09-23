@@ -2,7 +2,6 @@
 
 from datetime import datetime
 import json
-import numpy as np
 from numpy import random as np_random
 import os
 import random
@@ -61,25 +60,23 @@ def run_experiment(
         "start_time": str(datetime.now()),
         "common_params": {
             "qubit_num": qubit_num,
-            "max_steps": max_steps,
+            "gate_count": gate_count,
             "seed": seed,
             "tag": tag,
             "curriculum_learning": curriculum_learning
         },
-        "state_generator_params": {
-            "gate_count": gate_count,
-            "targeted_pool_size": targeted_pool_size,
-            "train_test_split": train_test_split,
-            "max_generation_tries": max_generation_tries,
-        },
+        "state_generator_params": None,
         "train_params": {
             "total_timesteps": total_timesteps,
             "log_interval": log_interval,
         },
-        "test_env_params": {
+        "eval_params": {
             "n_eval_episodes": n_eval_episodes,
             "eval_freq": eval_freq,
         },
+        "train_env_params": None,
+        "eval_env_params": None,
+        "curriculum_learning_params": None
     }
 
     random.seed(seed)
@@ -90,20 +87,18 @@ def run_experiment(
 
     state_generator = TargetStateGenerator(
         qubit_num=qubit_num, gate_count=gate_count, targeted_pool_size=targeted_pool_size, train_test_split=train_test_split, max_generation_tries=max_generation_tries)
-
-    config["state_generator_params"]["train_pool_size"] = len(
-        state_generator.train_pool)
-    config["state_generator_params"]["test_pool_size"] = len(
-        state_generator.test_pool)
+    config["state_generator_params"] = state_generator.params
 
     raw_env = StateSeparatorEnv(qubit_num=qubit_num, max_steps=max_steps,
                                 state_generator=state_generator, eval=False)
+    config["train_env_params"] = raw_env.params
     check_env(raw_env)
 
     env = Monitor(raw_env, f"{log_dir}/train")
 
     raw_eval_env = StateSeparatorEnv(
         qubit_num=qubit_num, max_steps=max_steps, state_generator=state_generator, eval=True)
+    config["eval_env_params"] = raw_eval_env.params
     check_env(raw_eval_env)
 
     eval_env = Monitor(raw_eval_env, f"{log_dir}/test")
@@ -115,6 +110,7 @@ def run_experiment(
                 raw_env, raw_eval_env], n_eval_episodes=n_eval_episodes, succ_pct_threshold=0.8,
             max_gate_count=25
         )
+        config["curriculum_learning_params"] = callback_after_eval.params
     else:
         callback_after_eval = None
 
