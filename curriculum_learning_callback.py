@@ -32,12 +32,9 @@ class CurriculumLearningCallback(BaseCallback):
 
     def _on_step(self) -> bool:
 
-        # get and compute success pct.
         succ_pct = self._compute_succ_pct(self.log_path)
 
         if succ_pct >= self.succ_pct_threshold and self.state_generator.gate_count < self.max_gate_count:
-
-            print("Increasing gate count and max steps.")
 
             self.state_generator.gate_count += 1
             self.state_generator.build_pool()
