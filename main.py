@@ -123,7 +123,6 @@ def run_experiment(
     model = PPO("MlpPolicy", env, verbose=1, seed=seed, n_steps=5_000)
 
     config["common_params"]["model"] = str(model.policy)
-
     save_to_json(config, config_target_path)
 
     model.learn(total_timesteps=total_timesteps, log_interval=log_interval,
@@ -132,6 +131,7 @@ def run_experiment(
     # Log how often gate count was incremented to determine final result.
     if curriculum_learning is True:
         config["curriculum_learning_params"]["final_gate_count"] = state_generator.gate_count
+        save_to_json(config, config_target_path)
 
     model.save(f"{log_dir}/model.zip")
 
