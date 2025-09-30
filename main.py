@@ -103,7 +103,8 @@ def run_experiment(
     config["eval_env_params"] = raw_eval_env.params
     check_env(raw_eval_env)
 
-    eval_env = Monitor(raw_eval_env, f"{log_dir}/test", info_keywords=("found_solution", "best_qubit_grouping"))
+    eval_env = Monitor(raw_eval_env, f"{log_dir}/test",
+                       info_keywords=("found_solution", "best_qubit_grouping"))
 
     if curriculum_learning is True:
         callback_after_eval = CurriculumLearningCallback(
@@ -633,6 +634,170 @@ if __name__ == "__main__":
         max_steps=25,
         targeted_pool_size=10_000,
         max_generation_tries=10_000_000,
+        total_timesteps=10_000_000,
+        eval_freq=50_000,
+        seed=3,
+        tag="base",
+        log_dir="logs"
+    )
+
+    # 5 qubits, 10 gates
+
+    model, eval_env = run_experiment(
+        qubit_num=5,
+        gate_count=10,
+        max_steps=10,
+        targeted_pool_size=10_000,
+        max_generation_tries=50_000_000,
+        total_timesteps=10_000_000,
+        eval_freq=50_000,
+        seed=1,
+        tag="base",
+        log_dir="logs"
+    )
+
+    model, eval_env = run_experiment(
+        qubit_num=5,
+        gate_count=10,
+        max_steps=10,
+        targeted_pool_size=10_000,
+        max_generation_tries=50_000_000,
+        total_timesteps=10_000_000,
+        eval_freq=50_000,
+        seed=2,
+        tag="base",
+        log_dir="logs"
+    )
+
+    model, eval_env = run_experiment(
+        qubit_num=5,
+        gate_count=10,
+        max_steps=10,
+        targeted_pool_size=10_000,
+        max_generation_tries=50_000_000,
+        total_timesteps=10_000_000,
+        eval_freq=50_000,
+        seed=3,
+        tag="base",
+        log_dir="logs"
+    )
+
+    # 5 qubits, 15 gates
+
+    model, eval_env = run_experiment(
+        qubit_num=5,
+        gate_count=15,
+        max_steps=15,
+        targeted_pool_size=10_000,
+        max_generation_tries=50_000_000,
+        total_timesteps=10_000_000,
+        eval_freq=50_000,
+        seed=1,
+        tag="base",
+        log_dir="logs"
+    )
+
+    model, eval_env = run_experiment(
+        qubit_num=5,
+        gate_count=15,
+        max_steps=15,
+        targeted_pool_size=10_000,
+        max_generation_tries=50_000_000,
+        total_timesteps=10_000_000,
+        eval_freq=50_000,
+        seed=2,
+        tag="base",
+        log_dir="logs"
+    )
+
+    model, eval_env = run_experiment(
+        qubit_num=5,
+        gate_count=15,
+        max_steps=15,
+        targeted_pool_size=10_000,
+        max_generation_tries=50_000_000,
+        total_timesteps=10_000_000,
+        eval_freq=50_000,
+        seed=3,
+        tag="base",
+        log_dir="logs"
+    )
+
+    # 5 qubits, 20 gates
+
+    model, eval_env = run_experiment(
+        qubit_num=5,
+        gate_count=20,
+        max_steps=20,
+        targeted_pool_size=10_000,
+        max_generation_tries=50_000_000,
+        total_timesteps=10_000_000,
+        eval_freq=50_000,
+        seed=1,
+        tag="base",
+        log_dir="logs"
+    )
+
+    model, eval_env = run_experiment(
+        qubit_num=5,
+        gate_count=20,
+        max_steps=20,
+        targeted_pool_size=10_000,
+        max_generation_tries=50_000_000,
+        total_timesteps=10_000_000,
+        eval_freq=50_000,
+        seed=2,
+        tag="base",
+        log_dir="logs"
+    )
+
+    model, eval_env = run_experiment(
+        qubit_num=5,
+        gate_count=20,
+        max_steps=20,
+        targeted_pool_size=10_000,
+        max_generation_tries=50_000_000,
+        total_timesteps=10_000_000,
+        eval_freq=50_000,
+        seed=3,
+        tag="base",
+        log_dir="logs"
+    )
+
+    # 5 qubits, 25 gates
+
+    model, eval_env = run_experiment(
+        qubit_num=5,
+        gate_count=25,
+        max_steps=25,
+        targeted_pool_size=10_000,
+        max_generation_tries=50_000_000,
+        total_timesteps=10_000_000,
+        eval_freq=50_000,
+        seed=1,
+        tag="base",
+        log_dir="logs"
+    )
+
+    model, eval_env = run_experiment(
+        qubit_num=5,
+        gate_count=25,
+        max_steps=25,
+        targeted_pool_size=10_000,
+        max_generation_tries=50_000_000,
+        total_timesteps=10_000_000,
+        eval_freq=50_000,
+        seed=2,
+        tag="base",
+        log_dir="logs"
+    )
+
+    model, eval_env = run_experiment(
+        qubit_num=5,
+        gate_count=25,
+        max_steps=25,
+        targeted_pool_size=10_000,
+        max_generation_tries=50_000_000,
         total_timesteps=10_000_000,
         eval_freq=50_000,
         seed=3,
