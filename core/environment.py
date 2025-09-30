@@ -22,7 +22,7 @@ import torch
 from typing import List, Dict
 
 from core.utils.circuit import decomplexify_vector, create_random_circuit, update_state
-from core.utils.metrics import min_entanglement_entropy
+from core.utils.metrics import min_entanglement_entropy, get_best_qubit_grouping
 from core.state_generator import TargetStateGenerator
 
 GATE_TYPE_COUNT = 4  # Clifford gate set
@@ -126,7 +126,15 @@ class StateSeparatorEnv(gym.Env):
         )
 
         found_solution = bool(min_entanglement_entropy(self.state) == 0)
-        return observation, reward, found_solution, step_limit_reached, {"state": self.state}
+
+        info_dict = {"state": self.state,
+                     "found_solution": found_solution, "best_qubit_grouping": None}
+
+        if found_solution:
+            info_dict["best_qubit_grouping"] = get_best_qubit_grouping(
+                self.state)
+
+        return observation, reward, found_solution, step_limit_reached, info_dict
 
     def reset(self, seed=None, options=None):
         super().reset(seed=seed, options=options)

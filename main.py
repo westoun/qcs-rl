@@ -103,7 +103,7 @@ def run_experiment(
     config["eval_env_params"] = raw_eval_env.params
     check_env(raw_eval_env)
 
-    eval_env = Monitor(raw_eval_env, f"{log_dir}/test")
+    eval_env = Monitor(raw_eval_env, f"{log_dir}/test", info_keywords=("found_solution", "best_qubit_grouping"))
 
     if curriculum_learning is True:
         callback_after_eval = CurriculumLearningCallback(

@@ -55,3 +55,31 @@ def min_entanglement_entropy(state: np.ndarray) -> float:
             current_minimum = entanglement_entropy
 
     return current_minimum
+
+
+def get_best_qubit_grouping(state: np.ndarray) -> Tuple[List[int], List[int]]:
+    density_matrix = dm_from_state_vector(state)
+
+    qubit_num = int(log2(len(state)))
+
+    current_minimum = np.inf
+    current_qubit_groupings = []
+
+    for indices0, incides1 in enumerate_qubit_groupings(qubit_num):
+        entanglement_entropy = vn_entanglement_entropy(
+            density_matrix, indices0=indices0, indices1=incides1)
+
+        if entanglement_entropy < 1e-8:
+            entanglement_entropy = 0
+
+        if entanglement_entropy < current_minimum:
+            current_qubit_groupings = [(indices0, incides1)]
+            current_minimum = entanglement_entropy
+
+        elif entanglement_entropy == current_minimum:
+            current_qubit_groupings.append((indices0, incides1))
+
+    # The bigger the smallest group is, the better
+    current_qubit_groupings.sort(key=lambda x: max(
+        len(x[0]), len(x[1])) - min(len(x[0]), len(x[1])))
+    return current_qubit_groupings[0]
