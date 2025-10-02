@@ -12,16 +12,9 @@ from quasim.gates import (
     Gate,
     CGate
 )
-from quasim.gates.utils import create_matrix, create_controlled_matrix
-import random
-from stable_baselines3 import PPO, A2C, DQN
-from stable_baselines3.common.env_checker import check_env
-from stable_baselines3.common.monitor import Monitor
-from stable_baselines3.common.results_plotter import plot_results, X_TIMESTEPS
-import torch
 from typing import List, Dict
 
-from core.utils.circuit import decomplexify_vector, create_random_circuit, update_state
+from core.utils.circuit import decomplexify_vector, state_to_string, update_state
 from core.utils.metrics import min_entanglement_entropy, get_best_qubit_grouping
 from core.state_generator import TargetStateGenerator
 
@@ -128,7 +121,12 @@ class StateSeparatorEnv(gym.Env):
         found_solution = bool(min_entanglement_entropy(self.state) == 0)
 
         info_dict = {"state": self.state,
-                     "found_solution": found_solution, "best_qubit_grouping": None}
+                     "found_solution": found_solution,
+                     "best_qubit_grouping": None,
+                     "start_state": state_to_string(self.state_history[0]),
+                     "gate_sequence": [
+                         gate.__repr__() for gate in self.gate_history
+                     ]}
 
         if found_solution:
             info_dict["best_qubit_grouping"] = get_best_qubit_grouping(
@@ -140,8 +138,8 @@ class StateSeparatorEnv(gym.Env):
         super().reset(seed=seed, options=options)
 
         state = self.state_generator.get_state(eval=self.eval)
-
         self.state = state
+
         self.step_count = 0
         self.gate_history = []
         self.state_history = [self.state]

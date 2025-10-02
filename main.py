@@ -104,7 +104,7 @@ def run_experiment(
     check_env(raw_eval_env)
 
     eval_env = Monitor(raw_eval_env, f"{log_dir}/test",
-                       info_keywords=("found_solution", "best_qubit_grouping"))
+                       info_keywords=("found_solution", "best_qubit_grouping", "start_state", "gate_sequence"))
 
     if curriculum_learning is True:
         callback_after_eval = CurriculumLearningCallback(
@@ -173,6 +173,20 @@ def test_model(model: OnPolicyAlgorithm, env: StateSeparatorEnv, max_steps: int,
 
 if __name__ == "__main__":
 
+    model, eval_env = run_experiment(
+        qubit_num=2,
+        gate_count=10,
+        max_steps=10,
+        targeted_pool_size=10_000,
+        total_timesteps=200_000,
+        eval_freq=50_000,
+        seed=1,
+        tag="base",
+        log_dir="logs2"
+    )
+    
+    raise 
+    
     # 2 qubits, 10 gates
 
     model, eval_env = run_experiment(

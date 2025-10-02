@@ -3,6 +3,7 @@
 import math
 import numpy as np
 from random import choice, sample, randint
+import re
 from typing import List
 
 from quasim import QuaSim, Circuit, get_unitary
@@ -20,6 +21,13 @@ from quasim.gates.utils import create_matrix, create_controlled_matrix
 GATE_TYPES = [
     "H", "S", "T", "CX"
 ]
+
+
+def state_to_string(state: np.ndarray, precision: int = 5) -> str:
+    state = np.array2string(state, precision=precision)
+    state = state.replace("\n", "")
+    state = re.sub(' +', ' ', state)
+    return state
 
 
 def decomplexify_vector(x: np.ndarray) -> np.ndarray:
