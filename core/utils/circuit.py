@@ -23,6 +23,15 @@ GATE_TYPES = [
 ]
 
 
+def create_random_state(qubit_num: int = 2, gate_count: int = 5) -> np.ndarray:
+    circuit = create_random_circuit(gate_count, qubit_num)
+
+    simulator = QuaSim()
+    simulator.evaluate([circuit])
+
+    return circuit.state
+
+
 def state_to_string(state: np.ndarray, precision: int = 5) -> str:
     state = np.array2string(state, precision=precision)
     state = state.replace("\n", "")

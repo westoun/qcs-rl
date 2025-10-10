@@ -16,17 +16,8 @@ from quasim.gates import (
     CGate
 )
 
-from core.utils.circuit import decomplexify_vector, create_random_circuit, update_state
+from core.utils.circuit import decomplexify_vector, create_random_state, update_state
 from core.utils.metrics import min_entanglement_entropy
-
-
-def create_random_state(qubit_num: int = 2, gate_count: int = 5) -> np.ndarray:
-    circuit = create_random_circuit(gate_count, qubit_num)
-
-    simulator = QuaSim()
-    simulator.evaluate([circuit])
-
-    return circuit.state
 
 
 class TargetStateGenerator:
