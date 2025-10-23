@@ -4,7 +4,7 @@ This repository contains the source code to the paper
 _"Learning State Separation for Quantum Circuit Synthesis"_
 by Stein, Klikovits, and Wimmer from the [Institute of Business Informatics - Software Engineering](https://se.jku.at/) at the [Johannes Kepler University](https://www.jku.at/en), Linz.
 
-## Experiments and Evaluation
+## Experiment Configuration
 
 The entrypoint for the experiments we reported in the paper lies
 in the `main.py` file. If you wish to run your own experiments,
@@ -19,6 +19,8 @@ The most important experiment parameters are
 - `max_steps`: maximum number of gates the agent can propose before
   an episode is considered a failure.
 - `total_timesteps`: amount of steps for which the agent is trained.
+
+## Run and Evaluate
 
 Once you have implemented the experiment configurations you wish to run,
 execute
